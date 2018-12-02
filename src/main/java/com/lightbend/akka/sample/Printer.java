@@ -30,9 +30,7 @@ public class Printer extends AbstractActor {
   @Override
   public Receive createReceive() {
     return receiveBuilder()
-        .match(Greeting.class, greeting -> {
-            log.info(greeting.message);
-        })
+        .match(Greeting.class, greeting -> log.info(greeting.message))
         .build();
   }
 //#printer-messages
