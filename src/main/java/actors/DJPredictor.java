@@ -27,8 +27,6 @@ public class DJPredictor extends AbstractActor implements IPredictor {
         }
     }
 
-
-
     static public Props props() {
         return Props.create(DJPredictor.class, () -> null);
     }
