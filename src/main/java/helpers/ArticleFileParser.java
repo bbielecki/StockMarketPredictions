@@ -17,8 +17,7 @@ public class ArticleFileParser {
     private static String CSV_SPLIT_BY = ",";
 
 
-    //This is yet to be tested
-    public static List<Article> ReadArticles(LocalDate date){
+    public static List<Article> readArticles(LocalDate date){
         BufferedReader br = null;
         String line = "";
 
@@ -26,18 +25,21 @@ public class ArticleFileParser {
 
         try {
             br = new BufferedReader(new FileReader(ARTICLES_LOCATION));
+
+            //skip headers
+            br.readLine();
             while ((line = br.readLine()) != null) {
-                List<String> articlesByDay = Arrays.asList(line.split(CSV_SPLIT_BY));
+                List<String> articlesByDay = new LinkedList<String>(Arrays.asList(line.split(CSV_SPLIT_BY)));
                 LocalDate day = LocalDate.parse(articlesByDay.remove(0));
 
-                if (date.isEqual(day))
+                if (date.isEqual(day)) {
+                    //remove label
+                    articlesByDay.remove(0);
                     articlesToReturn.addAll(articlesByDay.stream().map(a -> new Article(a, date)).collect(Collectors.toList()));
+                }
             }
 
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return articlesToReturn;
-        } catch (IOException e) {
             e.printStackTrace();
             return articlesToReturn;
         } catch (Exception e) {

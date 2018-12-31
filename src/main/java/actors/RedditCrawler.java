@@ -43,11 +43,13 @@ public class RedditCrawler extends AbstractActor {
     private void crawlDataSource(){
         //get articles by date.
         //todo: use config
-        List<Article> newArticles = ArticleFileParser.ReadArticles(LocalDate.now());
+        List<Article> newArticles = ArticleFileParser.readArticles(LocalDate.now());
 
         //automatically send crawled articles to subscribed index predictor
-        predictor.tell(new DJPredictor.Headers(newArticles), getSelf());
-        //TODO: different messages that depends on size of articles list (especially handling errors and empty list)
+        if (!newArticles.isEmpty())
+            predictor.tell(new DJPredictor.Headers(newArticles), getSelf());
+        else
+            predictor.tell(new DJPredictor.NoNewHeaders(), getSelf());
     }
 
     //starting crawler work. It will periodically send articles to subscribed predictor (which had created this Crawler)

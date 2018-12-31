@@ -17,14 +17,14 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 public class DJPredictor extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
     private BlockingQueue<Article> receivedArticles = new LinkedBlockingQueue<>();
 
     private List<Article> getArticlesByDate(LocalDate articlesDate){
-        //todo: take articles with specified date from receivedArticles lsit;
-        throw new NotImplementedException();
+        return receivedArticles.stream().filter(article -> article.getDate().isEqual(articlesDate)).collect(Collectors.toList());
     }
 
     private void predict(List<Article> articles, List<IndexDescriptor> indexHistory){
@@ -32,10 +32,13 @@ public class DJPredictor extends AbstractActor {
     }
 
     private void startPrediction(LocalDate dateOfPrediction){
-        //todo: create many crawlers with different configs
-        CrawlerConfig config = new CrawlerConfig();
-        ActorRef crawlers = getContext().getSystem().actorOf(RedditCrawler.props(getSelf(), config));
-        crawlers.tell(new RedditCrawler.StartCrawling(1, TimeUnit.DAYS), getSelf());
+        //todo: load crawler configs
+        List<CrawlerConfig> crawlerConfigs = new ArrayList<>();
+
+        for (CrawlerConfig config: crawlerConfigs) {
+            ActorRef crawler = getContext().getSystem().actorOf(RedditCrawler.props(getSelf(), config));
+            crawler.tell(new RedditCrawler.StartCrawling(1, TimeUnit.DAYS), getSelf());
+        }
 
         new Thread(() -> {
             predict(getArticlesByDate(dateOfPrediction), IndexHistoryReader.readHistory(dateOfPrediction,1, TimeUnit.DAYS));
@@ -55,6 +58,11 @@ public class DJPredictor extends AbstractActor {
             this.articles = articles;
         }
     }
+
+    public static class NoNewHeaders {
+        public NoNewHeaders() {}
+    }
+
 
     public static class StartPrediction{
         public final LocalDate predictionDate;
