@@ -12,13 +12,12 @@ import helpers.CrawlerConfig;
 import helpers.IndexHistoryReader;
 import helpers.ModelConfig;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
@@ -58,6 +57,7 @@ public class DJPredictor extends AbstractActor {
         public CrawlerConfirmation() {
         }
     }
+
     public static class Headers {
         public final List<Article> articles;
 
@@ -65,10 +65,12 @@ public class DJPredictor extends AbstractActor {
             this.articles = articles;
         }
     }
+
     public static class NoNewHeaders {
         public NoNewHeaders() {
         }
     }
+
     public static class StartPrediction {
         public final scala.concurrent.duration.Duration predictionTimeout;
         public final LocalDate predictionDate;
@@ -78,14 +80,16 @@ public class DJPredictor extends AbstractActor {
             this.predictionTimeout = predictionTimeout;
         }
     }
-    public static class CrawlingSourceUnavailable{
+
+    public static class CrawlingSourceUnavailable {
         public final CrawlerConfig config;
 
-        public CrawlingSourceUnavailable(CrawlerConfig config){
+        public CrawlingSourceUnavailable(CrawlerConfig config) {
             this.config = config;
         }
     }
-    public static class CrawlingException{
+
+    public static class CrawlingException {
         public final CrawlerConfig config;
 
         public CrawlingException(CrawlerConfig config) {
@@ -104,14 +108,13 @@ public class DJPredictor extends AbstractActor {
             getModelPredictions(articles);
 
 
-
         } catch (Exception e) {
             log.error("During communicating with model in DJ Predictor " + getSelf().path() + e.getClass() + " has occurred");
             manager.tell(new PortfolioManager.DJPredictorModelCommunicationError(predictorConfig), getSelf());
         }
     }
 
-    private void crawlArticles(LocalDate dateOfPrediction){
+    private void crawlArticles(LocalDate dateOfPrediction) {
         log.info("DJ Predictor " + getSelf().path() + " is collecting articles for prediction.");
         children.forEach(x -> x.tell(new RedditCrawler.StartCrawling(dateOfPrediction), getSelf()));
     }
@@ -120,16 +123,16 @@ public class DJPredictor extends AbstractActor {
         log.info("DJ Predictor " + getSelf().path() + " is starting prediction job.");
 
         new Thread(() -> {
-            try{
+            try {
                 LocalDate dateOfPrediction = predictionRequests.take();
 
                 //todo: delete after tests
-                manager.tell(new PortfolioManager.PredictionResult(dateOfPrediction, new ArrayList<>(), getSelf().path()), getSelf() );
+                manager.tell(new PortfolioManager.PredictionResult(dateOfPrediction, new ArrayList<>(), getSelf().path()), getSelf());
 
                 List<Article> articleForPrediction = getArticlesByDate(dateOfPrediction);
                 predict(articleForPrediction, IndexHistoryReader.readHistory(dateOfPrediction, 1, TimeUnit.DAYS));
 
-            }catch (Exception e){
+            } catch (Exception e) {
                 log.error("In DJ Predictor " + getSelf().path() + " an error " + e.getMessage() + "has occurred. Sending information to Manager.");
                 manager.tell(new PortfolioManager.DJPredictionException(predictorConfig), getSelf());
                 log.error(e.getMessage());
@@ -138,22 +141,47 @@ public class DJPredictor extends AbstractActor {
 
     }
 
+    private List<CrawlerConfig> readCrawlerConfigs() {
+        ArrayList<FileInputStream> propertiesStreams = new ArrayList<>();
+        ArrayList<CrawlerConfig> configs = new ArrayList<>();
+
+        try {
+            propertiesStreams.add(new FileInputStream("crawler1.properties"));
+            propertiesStreams.add(new FileInputStream("crawler2.properties"));
+            propertiesStreams.add(new FileInputStream("crawler3.properties"));
+            propertiesStreams.add(new FileInputStream("crawler4.properties"));
+            propertiesStreams.add(new FileInputStream("crawler5.properties"));
+
+            for (FileInputStream fis : propertiesStreams) {
+                Properties prop = new Properties();
+                prop.load(fis);
+
+                configs.add(new CrawlerConfig(Integer.getInteger(prop.getProperty("readModulo"))));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            log.error("DJ Predictor " + getSelf().path() + " cannot read all properties files.");
+            manager.tell(new PortfolioManager.DJPredictorCrawlersException(predictorConfig), getSelf());
+        }
+
+        return configs;
+    }
+
     private DJPredictor(ActorRef manager, ModelConfig modelConfig) {
         log.info("Creating DJ Predictor");
         children = new ArrayList<>();
         this.manager = manager;
         this.predictorConfig = modelConfig;
 
-        //todo: load config
-        List<CrawlerConfig> crawlerConfigs = new ArrayList<>();
-        if(crawlerConfigs == null){
-            crawlerConfigs = new ArrayList<>();
-            //todo: delete below line when DJ Predictor will receive not nullable crawlerConfigs list.
-            crawlerConfigs.add(new CrawlerConfig());
+        List<CrawlerConfig> crawlerConfigs = readCrawlerConfigs();
+
+        if(crawlerConfigs.size() == 0){
+            log.error("DJ Predictor " + getSelf().path() + " can't create any RedditCrawler due to configuration files problem.");
+            manager.tell(new PortfolioManager.DJPredictorCrawlersException(predictorConfig), getSelf());
         }
 
         for (CrawlerConfig config : crawlerConfigs) {
-            children.add( getContext().getSystem().actorOf(RedditCrawler.props(getSelf(), config)) );
+            children.add(getContext().getSystem().actorOf(RedditCrawler.props(getSelf(), config)));
             childrenCounter++;
         }
     }
@@ -201,21 +229,22 @@ public class DJPredictor extends AbstractActor {
                     childrenCounter--;
                     getSender().tell(Kill.getInstance(), getSelf());
                 })
-                .match(CrawlingException.class, x->{
+                .match(CrawlingException.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received message " + CrawlingSourceUnavailable.class + ". Restarting a child which failed...");
                     getSender().tell(Kill.getInstance(), getSelf());
-                    getContext().actorOf( RedditCrawler.props(getSelf(), x.config));
+                    getContext().actorOf(RedditCrawler.props(getSelf(), x.config));
                 })
                 .match(ReceiveTimeout.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received message " + ReceiveTimeout.class + ". Starting prediction.");
-                    if(predictionRequests.size() <= 1) getContext().setReceiveTimeout(scala.concurrent.duration.Duration.Undefined());
+                    if (predictionRequests.size() <= 1)
+                        getContext().setReceiveTimeout(scala.concurrent.duration.Duration.Undefined());
                     startPrediction();
                 })
                 .build();
     }
 
 
-    private void getModelPredictions(List<Article> articles){
+    private void getModelPredictions(List<Article> articles) {
         String s = null;
 
         try {
@@ -230,8 +259,7 @@ public class DJPredictor extends AbstractActor {
             while ((s = stdInput.readLine()) != null) {
                 System.out.println(s);
             }
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             System.out.println("Reading predictions from model failed");
             e.printStackTrace();
         }

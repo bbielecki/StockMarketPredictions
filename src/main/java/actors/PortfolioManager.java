@@ -60,6 +60,13 @@ public class PortfolioManager extends AbstractActor {
             this.config = config;
         }
     }
+    public static class DJPredictorCrawlersException{
+        public final ModelConfig config;
+
+        public DJPredictorCrawlersException(ModelConfig config){
+            this.config = config;
+        }
+    }
 
 
     private void handlePredictorError(ModelConfig config) {
@@ -69,9 +76,6 @@ public class PortfolioManager extends AbstractActor {
             log.info("Portfolio Manager restarts killed child with the same config.");
             getContext().getSystem().actorOf(DJPredictor.props(getSelf(), config));
         }
-    }
-    private List<CrawlerConfig> readCrawlerConfigs(){
-        return new ArrayList<>();
     }
 
     static public Props props() {
@@ -85,7 +89,7 @@ public class PortfolioManager extends AbstractActor {
         return Collections.max(weightedPredictions.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
-    public PortfolioManager() {
+    private PortfolioManager() {
         log.info("Creating Portfolio manager");
         predictionResults = new LinkedBlockingQueue<>();
         modelConfigs = new ArrayList<>();
@@ -121,6 +125,10 @@ public class PortfolioManager extends AbstractActor {
                 })
                 .match(DJPredictionException.class, x -> handlePredictorError(x.config))
                 .match(DJPredictorModelCommunicationError.class, x -> handlePredictorError(x.config))
+                .match(DJPredictorCrawlersException.class, x -> {
+                    log.info("Portfolio Manager " + getSelf().path() + " received message " + DJPredictorCrawlersException.class + ". Killing a child which failed...");
+                    getSender().tell(Kill.getInstance(), getSelf());
+                })
                 .build();
     }
 }
