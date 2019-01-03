@@ -6,20 +6,15 @@ import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-<<<<<<< HEAD
+
 import helpers.ModelConfig;
-=======
 import helpers.CrawlerConfig;
+
 import scala.concurrent.duration.Duration;
->>>>>>> dd5e95adbf78765c1ed29934c10353778bb400bd
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import scala.concurrent.duration.Duration;
 
 public class PortfolioManager extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);

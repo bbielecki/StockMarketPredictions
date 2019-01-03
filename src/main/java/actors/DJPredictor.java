@@ -134,11 +134,13 @@ public class DJPredictor extends AbstractActor {
 
     }
 
-    private DJPredictor(ActorRef manager, List<CrawlerConfig> crawlerConfigs, ModelConfig modelConfig) {
+    private DJPredictor(ActorRef manager, ModelConfig modelConfig) {
         log.info("Creating DJ Predictor");
         children = new ArrayList<>();
         this.manager = manager;
 
+        //todo: load config
+        List<CrawlerConfig> crawlerConfigs = new ArrayList<>();
         if(crawlerConfigs == null){
             crawlerConfigs = new ArrayList<>();
             //todo: delete below line when DJ Predictor will receive not nullable crawlerConfigs list.
@@ -156,8 +158,8 @@ public class DJPredictor extends AbstractActor {
         return strategy;
     }
 
-    public static Props props(ActorRef manager, List<CrawlerConfig> crawlerConfigs, ModelConfig modelConfig) {
-        return Props.create(DJPredictor.class, () -> new DJPredictor(manager, crawlerConfigs, modelConfig));
+    public static Props props(ActorRef manager, ModelConfig modelConfig) {
+        return Props.create(DJPredictor.class, () -> new DJPredictor(manager, modelConfig));
     }
 
     @Override
