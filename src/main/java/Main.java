@@ -9,7 +9,7 @@ public class Main {
     public static void main(String[] args) {
         final ActorSystem system = ActorSystem.create("StockMarketPredictions");
         final ActorRef printerActor = system.actorOf(PortfolioManager.props(), "printerActor");
-        printerActor.tell(new DJPredictor.StartPrediction(LocalDate.now()), ActorRef.noSender());
+        printerActor.tell(new PortfolioManager.StartPrediction(), ActorRef.noSender());
 
     }
 }

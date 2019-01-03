@@ -8,10 +8,8 @@ import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.DeciderBuilder;
-import com.lightbend.akka.sample.Greeter;
 import helpers.CrawlerConfig;
 import helpers.IndexHistoryReader;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -26,14 +24,14 @@ public class DJPredictor extends AbstractActor {
 
     private static int childrenCounter = 0;
     private BlockingQueue<Article> receivedArticles = new LinkedBlockingQueue<>();
+    private BlockingQueue<LocalDate> predictionRequests = new LinkedBlockingQueue<>();
     private static List<ActorRef> children;
     private ActorRef manager;
     private static SupervisorStrategy strategy =
             new OneForOneStrategy(10, Duration.ofMinutes(1),
                     DeciderBuilder
-                            .match(CrawlingSourceUnavailableException.class, e -> SupervisorStrategy.restart())
                             .match(NullPointerException.class, e -> SupervisorStrategy.restart())
-                            .match(IllegalArgumentException.class, e -> {
+                            .match(CrawlingSourceUnavailableException.class, e -> {
                                 if (childrenCounter <= minimumWorkingChildren) return SupervisorStrategy.escalate();
                                 else {
                                     childrenCounter--;
@@ -67,10 +65,26 @@ public class DJPredictor extends AbstractActor {
         }
     }
     public static class StartPrediction {
+        public final scala.concurrent.duration.Duration predictionTimeout;
         public final LocalDate predictionDate;
 
-        public StartPrediction(LocalDate predictionDate) {
+        public StartPrediction(LocalDate predictionDate, scala.concurrent.duration.Duration predictionTimeout) {
             this.predictionDate = predictionDate;
+            this.predictionTimeout = predictionTimeout;
+        }
+    }
+    public static class CrawlingSourceUnavailable{
+        public final CrawlerConfig config;
+
+        public CrawlingSourceUnavailable(CrawlerConfig config){
+            this.config = config;
+        }
+    }
+    public static class CrawlingException{
+        public final CrawlerConfig config;
+
+        public CrawlingException(CrawlerConfig config) {
+            this.config = config;
         }
     }
 
@@ -90,14 +104,23 @@ public class DJPredictor extends AbstractActor {
         }
     }
 
-    private void startPrediction(LocalDate dateOfPrediction) {
+    private void crawlArticles(LocalDate dateOfPrediction){
+        log.info("DJ Predictor " + getSelf().path() + " is collecting articles for prediction.");
+        children.forEach(x -> x.tell(new RedditCrawler.StartCrawling(dateOfPrediction), getSelf()));
+    }
+
+    private void startPrediction() {
         log.info("DJ Predictor " + getSelf().path() + " is starting prediction job.");
 
-        children.forEach(x -> x.tell(new RedditCrawler.StartCrawling(1, TimeUnit.DAYS), getSelf()));
-
         new Thread(() -> {
-            List<Article> articleForPrediction = getArticlesByDate(dateOfPrediction);
-            predict(articleForPrediction, IndexHistoryReader.readHistory(dateOfPrediction, 1, TimeUnit.DAYS));
+            try{
+                LocalDate dateOfPrediction = predictionRequests.take();
+                List<Article> articleForPrediction = getArticlesByDate(dateOfPrediction);
+
+                predict(articleForPrediction, IndexHistoryReader.readHistory(dateOfPrediction, 1, TimeUnit.DAYS));
+            }catch (Exception e){
+                log.error(e.getMessage());
+            }
         }).start();
 
     }
@@ -145,12 +168,29 @@ public class DJPredictor extends AbstractActor {
                 })
                 .match(NoNewHeaders.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received request " + NoNewHeaders.class);
-
                 })
                 .match(StartPrediction.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received request " + StartPrediction.class);
 
-                    startPrediction(x.predictionDate);
+                    getContext().setReceiveTimeout(x.predictionTimeout);
+                    predictionRequests.add(x.predictionDate);
+                    crawlArticles(x.predictionDate);
+                })
+                .match(CrawlingSourceUnavailable.class, x -> {
+                    log.info("DJ Predictor " + getSelf().path() + " received message " + CrawlingSourceUnavailable.class + ". Killing a child which failed...");
+
+                    childrenCounter--;
+                    getSender().tell(Kill.getInstance(), getSelf());
+                })
+                .match(CrawlingException.class, x->{
+                    log.info("DJ Predictor " + getSelf().path() + " received message " + CrawlingSourceUnavailable.class + ". Restarting a child which failed...");
+                    getSender().tell(Kill.getInstance(), getSelf());
+                    getContext().actorOf( RedditCrawler.props(getSelf(), x.config));
+                })
+                .match(ReceiveTimeout.class, x -> {
+                    log.info("DJ Predictor " + getSelf().path() + " received message " + ReceiveTimeout.class + ". Starting prediction.");
+                    if(predictionRequests.size() <= 1) getContext().setReceiveTimeout(scala.concurrent.duration.Duration.Undefined());
+                    startPrediction();
                 })
                 .build();
     }

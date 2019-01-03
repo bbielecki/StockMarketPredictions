@@ -1,17 +1,13 @@
 package actors;
 
-import DomainObjects.Article;
 import Exceptions.CrawlingSourceUnavailableException;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import helpers.ArticleFileParser;
 import helpers.CrawlerConfig;
-import scala.collection.script.Start;
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -23,15 +19,12 @@ public class RedditCrawler extends AbstractActor {
     private final CrawlerConfig config;
 
     public static class StartCrawling{
-        final int timeSpanBetweenCrawlings;
-        final TimeUnit timeUnit;
+        final LocalDate articlesDate;
 
-        public StartCrawling(int timeSpanBetweenCrawlings, TimeUnit timeUnit){
-            this.timeSpanBetweenCrawlings = timeSpanBetweenCrawlings;
-            this.timeUnit = timeUnit;
+        public StartCrawling(LocalDate articlesDate){
+            this.articlesDate = articlesDate;
         }
     }
-
 
     private RedditCrawler(ActorRef predictor, CrawlerConfig config){
         log.info("Creating Reddit Crawler");
@@ -40,9 +33,9 @@ public class RedditCrawler extends AbstractActor {
     }
 
     //should get the configuration which determine the range of the articles (first 5, random 5 etc...)
-    private void crawlDataSource(){
+    private void crawlDataSource(LocalDate articlesDate){
         log.error("In Reddit Crawler " + getSelf().path() + CrawlingSourceUnavailableException.class + " has occurred");
-        predictor.tell(new Status.Failure(new CrawlingSourceUnavailableException()), getSelf());
+        predictor.tell(new DJPredictor.CrawlingSourceUnavailable(this.config), getSelf());
         //get articles by date.
 //        try{
 //            //todo: use config
@@ -62,12 +55,6 @@ public class RedditCrawler extends AbstractActor {
 //        }
     }
 
-    //starting crawler work. It will periodically send articles to subscribed predictor (which had created this Crawler)
-    private void startCrawling(StartCrawling startCrawlingMessage) {
-        log.info("Reddit Crawler " + getSelf().path() + " is starting crawling job.");
-        scheduler.scheduleAtFixedRate(this::crawlDataSource, 0, startCrawlingMessage.timeSpanBetweenCrawlings, startCrawlingMessage.timeUnit);
-    }
-
     static public Props props( ActorRef predictor, CrawlerConfig config ) {
         return Props.create(RedditCrawler.class, () -> new RedditCrawler(predictor, config));
     }
@@ -77,19 +64,21 @@ public class RedditCrawler extends AbstractActor {
         return receiveBuilder()
                 .match(StartCrawling.class, x ->{
                     log.info("Reddit Crawler " + getSelf().path() + " received request " + StartCrawling.class);
-                    getContext().setReceiveTimeout(Duration.create(10, TimeUnit.SECONDS));
-                    startCrawling(x);
+                    getContext().setReceiveTimeout(Duration.create(5, TimeUnit.SECONDS));
+                    crawlDataSource(x.articlesDate);
                     this.predictor.tell(new DJPredictor.CrawlerConfirmation(), getSelf());
                 })
                 .match(ReceiveTimeout.class, x -> {
                     log.info("Reddit Crawler " + getSelf().path() + " received request " + ReceiveTimeout.class);
                     predictor.tell(new Status.Failure(new CrawlingSourceUnavailableException()), getSelf());
+                    getContext().setReceiveTimeout(Duration.Undefined());
                 })
                 .build();
     }
 
-//    @Override
-//    public void postRestart(){
-//
-//    }
+    @Override
+    public void postStop() throws Exception {
+        log.info("Reddit Crawler " + getSelf().path() + " was stopped.");
+        super.postStop();
+    }
 }
