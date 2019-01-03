@@ -115,6 +115,9 @@ public class DJPredictor extends AbstractActor {
         new Thread(() -> {
             try{
                 LocalDate dateOfPrediction = predictionRequests.take();
+                //todo: delete after tests
+                manager.tell(new PortfolioManager.PredictionResult(dateOfPrediction, new ArrayList<>()), getSelf() );
+
                 List<Article> articleForPrediction = getArticlesByDate(dateOfPrediction);
 
                 predict(articleForPrediction, IndexHistoryReader.readHistory(dateOfPrediction, 1, TimeUnit.DAYS));
@@ -125,19 +128,20 @@ public class DJPredictor extends AbstractActor {
 
     }
 
-    private DJPredictor(ActorRef manager) {
+    private DJPredictor(ActorRef manager, List<CrawlerConfig> crawlerConfigs) {
         log.info("Creating DJ Predictor");
         children = new ArrayList<>();
-        List<CrawlerConfig> crawlerConfigs = new ArrayList<>();
         this.manager = manager;
 
-        //todo: load crawler configs
-        crawlerConfigs.add(new CrawlerConfig());
-        for (CrawlerConfig config : crawlerConfigs) {
+        if(crawlerConfigs == null){
+            crawlerConfigs = new ArrayList<>();
+            //todo: delete below line when DJ Predictor will receive not nullable crawlerConfigs list.
+            crawlerConfigs.add(new CrawlerConfig());
+        }
 
+        for (CrawlerConfig config : crawlerConfigs) {
             children.add( getContext().getSystem().actorOf(RedditCrawler.props(getSelf(), config)) );
             childrenCounter++;
-
         }
     }
 
@@ -146,8 +150,8 @@ public class DJPredictor extends AbstractActor {
         return strategy;
     }
 
-    public static Props props(ActorRef manager) {
-        return Props.create(DJPredictor.class, () -> new DJPredictor(manager));
+    public static Props props(ActorRef manager, List<CrawlerConfig> crawlerConfigs) {
+        return Props.create(DJPredictor.class, () -> new DJPredictor(manager, crawlerConfigs));
     }
 
     @Override
@@ -172,8 +176,10 @@ public class DJPredictor extends AbstractActor {
                 .match(StartPrediction.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received request " + StartPrediction.class);
 
+                    //start prediction request triggers DJ predictor timeout which will be cancelled only if all prediction request will be handled.
                     getContext().setReceiveTimeout(x.predictionTimeout);
-                    predictionRequests.add(x.predictionDate);
+                    //add prediction date to prediction job queue.
+                    predictionRequests.put(x.predictionDate);
                     crawlArticles(x.predictionDate);
                 })
                 .match(CrawlingSourceUnavailable.class, x -> {
