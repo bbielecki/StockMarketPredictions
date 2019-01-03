@@ -1,10 +1,8 @@
 package com.lightbend.akka.sample;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import actors.DJPredictor;
-import actors.PortfolioManager;
 import actors.RedditCrawler;
 import helpers.CrawlerConfig;
 import org.junit.AfterClass;

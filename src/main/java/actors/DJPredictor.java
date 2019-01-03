@@ -26,6 +26,7 @@ public class DJPredictor extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
     private static final int minimumWorkingChildren = 2;
 
+    private ModelConfig predictorConfig;
     private static int childrenCounter = 0;
     private BlockingQueue<Article> receivedArticles = new LinkedBlockingQueue<>();
     private BlockingQueue<LocalDate> predictionRequests = new LinkedBlockingQueue<>();
@@ -122,12 +123,13 @@ public class DJPredictor extends AbstractActor {
             try{
                 LocalDate dateOfPrediction = predictionRequests.take();
                 //todo: delete after tests
-                manager.tell(new PortfolioManager.PredictionResult(dateOfPrediction, new ArrayList<>()), getSelf() );
+                manager.tell(new PortfolioManager.PredictionResult(dateOfPrediction, new ArrayList<>(), getSelf().path()), getSelf() );
 
                 List<Article> articleForPrediction = getArticlesByDate(dateOfPrediction);
 
                 predict(articleForPrediction, IndexHistoryReader.readHistory(dateOfPrediction, 1, TimeUnit.DAYS));
             }catch (Exception e){
+                manager.tell(new PortfolioManager.DJPredictionException(predictorConfig), getSelf());
                 log.error(e.getMessage());
             }
         }).start();
@@ -138,6 +140,7 @@ public class DJPredictor extends AbstractActor {
         log.info("Creating DJ Predictor");
         children = new ArrayList<>();
         this.manager = manager;
+        this.predictorConfig = modelConfig;
 
         //todo: load config
         List<CrawlerConfig> crawlerConfigs = new ArrayList<>();

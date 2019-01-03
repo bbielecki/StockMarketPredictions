@@ -1,12 +1,11 @@
 package actors;
 
 import DomainObjects.Prediction;
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
+import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 
+import akka.util.Timeout;
 import helpers.ModelConfig;
 import helpers.CrawlerConfig;
 
@@ -15,26 +14,45 @@ import scala.concurrent.duration.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class PortfolioManager extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
+    private static BlockingQueue<PredictionResult> predictionResults;
     private static List<ActorRef> models;
     private static List<ModelConfig> modelConfigs;
-    private int activePredictorsCounter;
 
     public static class PredictionResult{
         public final LocalDate predictionDate;
         public final List<Prediction> predictions;
-        public final String testMessage = "done";
+        public final ActorPath predictorPath;
 
-        public PredictionResult(LocalDate predictionDate, List<Prediction> predictions){
+        public PredictionResult(LocalDate predictionDate, List<Prediction> predictions, ActorPath predictorPath){
             this.predictionDate = predictionDate;
             this.predictions = predictions;
+            this.predictorPath = predictorPath;
+        }
+
+        @Override
+        public boolean equals(Object o){
+            if(o == this) return true;
+            if(!(o instanceof PredictionResult)) return false;
+
+            PredictionResult pr = (PredictionResult) o;
+            return predictionDate.equals(pr.predictionDate) && predictorPath.equals(pr.predictorPath);
         }
     }
-    public static class StartPrediction{
+    public static class StartPrediction{ }
+    public static class DJPredictionException{
+        public final ModelConfig config;
 
+        public DJPredictionException(ModelConfig config){
+            this.config = config;
+        }
     }
+
 
     private List<CrawlerConfig> readCrawlerConfigs(){
         return new ArrayList<>();
@@ -46,14 +64,13 @@ public class PortfolioManager extends AbstractActor {
 
     public PortfolioManager() {
         log.info("Creating Portfolio manager");
-        models = new ArrayList<>();
+        predictionResults = new LinkedBlockingQueue<>();
         modelConfigs = new ArrayList<>();
-        activePredictorsCounter = 0;
+        models = new ArrayList<>();
 
         modelConfigs.add(new ModelConfig());
         for (ModelConfig config : modelConfigs) {
             models.add(getContext().getSystem().actorOf(DJPredictor.props(getSelf(), config)) );
-            activePredictorsCounter++;
         }
     }
 
@@ -62,12 +79,30 @@ public class PortfolioManager extends AbstractActor {
 
         return receiveBuilder()
                 .match(StartPrediction.class, x->{
-                    Duration timeout = new Duration(100, "millis");
+                    log.info("Portfolio Manager " + getSelf().path() + " is starting prediction on date: " + LocalDate.now());
+                    Duration timeout = Duration.create(100, TimeUnit.MILLISECONDS);
                     models.forEach(model -> model.tell(new DJPredictor.StartPrediction(LocalDate.now(), timeout), getSelf()));
                 })
                 .match(PredictionResult.class, x->{
                     log.info("Portfolio Manager " + getSelf().path() + " received prediction result.");
-
+                    log.info("predictionResults size = " + predictionResults.size());
+                    if(!predictionResults.contains(x)){
+                        predictionResults.put(x);
+                        log.info("Prediction result was added to queue.");
+                    }
+                })
+                .match(ReceiveTimeout.class, x -> {
+                    log.info("Reddit Crawler " + getSelf().path() + " received request " + ReceiveTimeout.class);
+                    getContext().setReceiveTimeout(Duration.Undefined());
+                    //todo: call negotiations method and reset timeout...
+                })
+                .match(DJPredictionException.class, x -> {
+                    log.info("Portfolio Manager " + getSelf().path() + " received message " + DJPredictionException.class + ". Killing a child which failed...");
+                    getSender().tell(Kill.getInstance(), getSelf());
+                    if(getContext().receiveTimeout() != Duration.Undefined()) {
+                        log.info("Portfolio Manager restarts killed child with the same config.");
+                        getContext().getSystem().actorOf(DJPredictor.props(getSelf(), x.config));
+                    }
                 })
                 .build();
     }
