@@ -13,8 +13,8 @@ import helpers.CrawlerConfig;
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class PortfolioManager extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
@@ -42,6 +42,13 @@ public class PortfolioManager extends AbstractActor {
 
     static public Props props() {
         return Props.create(PortfolioManager.class, PortfolioManager::new);
+    }
+
+    public static int getFinalClass(List<Prediction> predictions) {
+        Map<Integer, Double> weightedPredictions = predictions.stream().collect(Collectors.toMap(
+                Prediction::getPredictionClass, p -> p.getProbability() * p.getWeight(), (oldValue, newValue) -> oldValue + newValue));
+
+        return Collections.max(weightedPredictions.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
     public PortfolioManager() {
