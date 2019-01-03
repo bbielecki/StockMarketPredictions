@@ -10,7 +10,11 @@ import akka.event.LoggingAdapter;
 import akka.japi.pf.DeciderBuilder;
 import helpers.CrawlerConfig;
 import helpers.IndexHistoryReader;
+import helpers.ModelConfig;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -96,7 +100,9 @@ public class DJPredictor extends AbstractActor {
     private void predict(List<Article> articles, List<IndexDescriptor> indexHistory) {
         try {
             log.info("DJ Predictor " + getSelf().path() + " is trying to communicate with model.");
-            //todo: communicate with model
+            getModelPredictions(articles);
+
+
 
         } catch (Exception e) {
             log.error("During communicating with model in DJ Predictor " + getSelf().path() + e.getClass() + " has occurred");
@@ -125,7 +131,7 @@ public class DJPredictor extends AbstractActor {
 
     }
 
-    private DJPredictor(ActorRef manager) {
+    private DJPredictor(ActorRef manager, ModelConfig modelConfig) {
         log.info("Creating DJ Predictor");
         children = new ArrayList<>();
         List<CrawlerConfig> crawlerConfigs = new ArrayList<>();
@@ -146,8 +152,8 @@ public class DJPredictor extends AbstractActor {
         return strategy;
     }
 
-    public static Props props(ActorRef manager) {
-        return Props.create(DJPredictor.class, () -> new DJPredictor(manager));
+    public static Props props(ActorRef manager, ModelConfig config) {
+        return Props.create(DJPredictor.class, () -> new DJPredictor(manager, config));
     }
 
     @Override
@@ -194,4 +200,29 @@ public class DJPredictor extends AbstractActor {
                 })
                 .build();
     }
+
+
+    private void getModelPredictions(List<Article> articles){
+        String s = null;
+
+        try {
+            ProcessBuilder builder = new ProcessBuilder(
+                    "cmd.exe", "/c", "cd \"src\\main\\models\" && python test.py Hello");
+            builder.redirectErrorStream(true);
+            Process p = builder.start();
+            BufferedReader stdInput = new BufferedReader(new
+                    InputStreamReader(p.getInputStream()));
+
+            //todo: match output format from model
+            while ((s = stdInput.readLine()) != null) {
+                System.out.println(s);
+            }
+        }
+        catch (IOException e) {
+            System.out.println("Reading predictions from model failed");
+            e.printStackTrace();
+        }
+
+    }
+
 }
