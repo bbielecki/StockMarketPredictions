@@ -17,7 +17,7 @@ public class ArticleFileParser {
     private static String CSV_SPLIT_BY = ",";
 
 
-    public static List<Article> readArticles(LocalDate date){
+    public static List<Article> readArticles(LocalDate date, int readModulo){
         BufferedReader br = null;
         String line = "";
 
