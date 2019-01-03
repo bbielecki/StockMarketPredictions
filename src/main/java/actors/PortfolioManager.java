@@ -5,7 +5,6 @@ import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 
-import akka.util.Timeout;
 import helpers.ModelConfig;
 import helpers.CrawlerConfig;
 
@@ -54,8 +53,23 @@ public class PortfolioManager extends AbstractActor {
             this.config = config;
         }
     }
+    public static class DJPredictorModelCommunicationError {
+        public final ModelConfig config;
+
+        public DJPredictorModelCommunicationError(ModelConfig config){
+            this.config = config;
+        }
+    }
 
 
+    private void handlePredictorError(ModelConfig config) {
+        log.info("Portfolio Manager " + getSelf().path() + " received message " + DJPredictionException.class + ". Killing a child which failed...");
+        getSender().tell(Kill.getInstance(), getSelf());
+        if (getContext().receiveTimeout() != Duration.Undefined()) {
+            log.info("Portfolio Manager restarts killed child with the same config.");
+            getContext().getSystem().actorOf(DJPredictor.props(getSelf(), config));
+        }
+    }
     private List<CrawlerConfig> readCrawlerConfigs(){
         return new ArrayList<>();
     }
@@ -105,14 +119,8 @@ public class PortfolioManager extends AbstractActor {
                     getContext().setReceiveTimeout(Duration.Undefined());
                     //todo: call negotiations method and reset timeout...
                 })
-                .match(DJPredictionException.class, x -> {
-                    log.info("Portfolio Manager " + getSelf().path() + " received message " + DJPredictionException.class + ". Killing a child which failed...");
-                    getSender().tell(Kill.getInstance(), getSelf());
-                    if(getContext().receiveTimeout() != Duration.Undefined()) {
-                        log.info("Portfolio Manager restarts killed child with the same config.");
-                        getContext().getSystem().actorOf(DJPredictor.props(getSelf(), x.config));
-                    }
-                })
+                .match(DJPredictionException.class, x -> handlePredictorError(x.config))
+                .match(DJPredictorModelCommunicationError.class, x -> handlePredictorError(x.config))
                 .build();
     }
 }

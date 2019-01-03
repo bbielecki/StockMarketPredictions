@@ -107,7 +107,7 @@ public class DJPredictor extends AbstractActor {
 
         } catch (Exception e) {
             log.error("During communicating with model in DJ Predictor " + getSelf().path() + e.getClass() + " has occurred");
-            manager.tell(new Status.Failure(e), getSelf());
+            manager.tell(new PortfolioManager.DJPredictorModelCommunicationError(predictorConfig), getSelf());
         }
     }
 
@@ -122,13 +122,15 @@ public class DJPredictor extends AbstractActor {
         new Thread(() -> {
             try{
                 LocalDate dateOfPrediction = predictionRequests.take();
+
                 //todo: delete after tests
                 manager.tell(new PortfolioManager.PredictionResult(dateOfPrediction, new ArrayList<>(), getSelf().path()), getSelf() );
 
                 List<Article> articleForPrediction = getArticlesByDate(dateOfPrediction);
-
                 predict(articleForPrediction, IndexHistoryReader.readHistory(dateOfPrediction, 1, TimeUnit.DAYS));
+
             }catch (Exception e){
+                log.error("In DJ Predictor " + getSelf().path() + " an error " + e.getMessage() + "has occurred. Sending information to Manager.");
                 manager.tell(new PortfolioManager.DJPredictionException(predictorConfig), getSelf());
                 log.error(e.getMessage());
             }
