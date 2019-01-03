@@ -57,7 +57,6 @@ public class DJPredictor extends AbstractActor {
         public CrawlerConfirmation() {
         }
     }
-
     public static class Headers {
         public final List<Article> articles;
 
@@ -65,12 +64,10 @@ public class DJPredictor extends AbstractActor {
             this.articles = articles;
         }
     }
-
     public static class NoNewHeaders {
         public NoNewHeaders() {
         }
     }
-
     public static class StartPrediction {
         public final scala.concurrent.duration.Duration predictionTimeout;
         public final LocalDate predictionDate;
@@ -80,7 +77,6 @@ public class DJPredictor extends AbstractActor {
             this.predictionTimeout = predictionTimeout;
         }
     }
-
     public static class CrawlingSourceUnavailable {
         public final CrawlerConfig config;
 
@@ -88,7 +84,6 @@ public class DJPredictor extends AbstractActor {
             this.config = config;
         }
     }
-
     public static class CrawlingException {
         public final CrawlerConfig config;
 
@@ -96,6 +91,7 @@ public class DJPredictor extends AbstractActor {
             this.config = config;
         }
     }
+
 
 
     private List<Article> getArticlesByDate(LocalDate articlesDate) {
@@ -167,6 +163,28 @@ public class DJPredictor extends AbstractActor {
         return configs;
     }
 
+    private void getModelPredictions(List<Article> articles) {
+        String s = null;
+
+        try {
+            ProcessBuilder builder = new ProcessBuilder(
+                    "cmd.exe", "/c", "cd \"src\\main\\models\" && python test.py Hello");
+            builder.redirectErrorStream(true);
+            Process p = builder.start();
+            BufferedReader stdInput = new BufferedReader(new
+                    InputStreamReader(p.getInputStream()));
+
+            //todo: match output format from model
+            while ((s = stdInput.readLine()) != null) {
+                System.out.println(s);
+            }
+        } catch (IOException e) {
+            System.out.println("Reading predictions from model failed");
+            e.printStackTrace();
+        }
+
+    }
+
     private DJPredictor(ActorRef manager, ModelConfig modelConfig) {
         log.info("Creating DJ Predictor");
         children = new ArrayList<>();
@@ -185,6 +203,8 @@ public class DJPredictor extends AbstractActor {
             childrenCounter++;
         }
     }
+
+
 
     @Override
     public SupervisorStrategy supervisorStrategy() {
@@ -242,28 +262,4 @@ public class DJPredictor extends AbstractActor {
                 })
                 .build();
     }
-
-
-    private void getModelPredictions(List<Article> articles) {
-        String s = null;
-
-        try {
-            ProcessBuilder builder = new ProcessBuilder(
-                    "cmd.exe", "/c", "cd \"src\\main\\models\" && python test.py Hello");
-            builder.redirectErrorStream(true);
-            Process p = builder.start();
-            BufferedReader stdInput = new BufferedReader(new
-                    InputStreamReader(p.getInputStream()));
-
-            //todo: match output format from model
-            while ((s = stdInput.readLine()) != null) {
-                System.out.println(s);
-            }
-        } catch (IOException e) {
-            System.out.println("Reading predictions from model failed");
-            e.printStackTrace();
-        }
-
-    }
-
 }
