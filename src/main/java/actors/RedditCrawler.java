@@ -64,13 +64,13 @@ public class RedditCrawler extends AbstractActor {
         return receiveBuilder()
                 .match(StartCrawling.class, x ->{
                     log.info("Reddit Crawler " + getSelf().path() + " received request " + StartCrawling.class);
+                    this.predictor.tell(new DJPredictor.CrawlerConfirmation(), getSelf());
                     getContext().setReceiveTimeout(Duration.create(5, TimeUnit.SECONDS));
                     crawlDataSource(x.articlesDate);
-                    this.predictor.tell(new DJPredictor.CrawlerConfirmation(), getSelf());
                 })
                 .match(ReceiveTimeout.class, x -> {
                     log.info("Reddit Crawler " + getSelf().path() + " received request " + ReceiveTimeout.class);
-                    predictor.tell(new Status.Failure(new CrawlingSourceUnavailableException()), getSelf());
+                    predictor.tell(new DJPredictor.CrawlingSourceUnavailable(this.config), getSelf());
                     getContext().setReceiveTimeout(Duration.Undefined());
                 })
                 .build();
