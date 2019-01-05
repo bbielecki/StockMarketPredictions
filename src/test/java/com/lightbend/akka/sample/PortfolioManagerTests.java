@@ -1,5 +1,6 @@
 package com.lightbend.akka.sample;
 
+import DomainObjects.Prediction;
 import actors.DJPredictor;
 import actors.PortfolioManager;
 import akka.actor.ActorRef;
@@ -13,6 +14,7 @@ import org.junit.Test;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class PortfolioManagerTests {
@@ -52,5 +54,19 @@ public class PortfolioManagerTests {
         Assert.assertTrue(!predictionResults.contains(pr_3));
         Assert.assertTrue(!predictionResults.contains(pr_4));
         Assert.assertTrue(!predictionResults.contains(pr_5));
+    }
+
+    @Test
+    public void testPredictingFinalClass() {
+        Prediction p1_0 = new Prediction(0, 0.5, 1);
+        Prediction p1_1 = new Prediction(1, 0.5, 2);
+        Prediction p2_0 = new Prediction(0, 0.5, 1);
+        Prediction p2_1 = new Prediction(1, 0.5, 2);
+
+        List<Prediction> predictions = new ArrayList<>(Arrays.asList(p1_0, p1_1, p2_0, p2_1));
+
+        int result = PortfolioManager.getFinalClass(predictions);
+
+        Assert.assertEquals(1, result);
     }
 }
