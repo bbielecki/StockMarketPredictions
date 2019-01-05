@@ -7,6 +7,7 @@ import akka.event.LoggingAdapter;
 
 import helpers.ModelConfig;
 
+import scala.Tuple2;
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;
@@ -76,8 +77,31 @@ public class PortfolioManager extends AbstractActor {
         }
     }
 
-    static public Props props() {
-        return Props.create(PortfolioManager.class, PortfolioManager::new);
+    private void handlePredictionResult(BlockingQueue<PredictionResult> predictionResults){
+        List<PredictionResult> results = new ArrayList<>();
+        List<Prediction> predictions = new ArrayList<>();
+
+        //take all predictions from blocked queue.
+        PredictionResult temp;
+        while ((temp = predictionResults.poll()) != null) results.add(temp);
+        //aggregate predictions from all Predictors
+        results.forEach(x -> predictions.addAll(x.predictions));
+
+//        Map.Entry<Integer, Double> theBestResult = getFinalClassWithProbability(predictions);
+
+        //todo:handle theBestResult....
+    }
+
+    private PortfolioManager() {
+        log.info("Creating Portfolio manager");
+        predictionResults = new LinkedBlockingQueue<>();
+        modelConfigs = new ArrayList<>();
+        models = new ArrayList<>();
+
+        modelConfigs.add(new ModelConfig());
+        for (ModelConfig config : modelConfigs) {
+            models.add(getContext().getSystem().actorOf(DJPredictor.props(getSelf(), config)) );
+        }
     }
 
     public static AbstractMap.SimpleEntry<Integer, Double> getFinalClass(List<Prediction> predictions) {
@@ -92,16 +116,8 @@ public class PortfolioManager extends AbstractActor {
         return new AbstractMap.SimpleEntry<>(finalClass, probability);
     }
 
-    private PortfolioManager() {
-        log.info("Creating Portfolio manager");
-        predictionResults = new LinkedBlockingQueue<>();
-        modelConfigs = new ArrayList<>();
-        models = new ArrayList<>();
-
-        modelConfigs.add(new ModelConfig());
-        for (ModelConfig config : modelConfigs) {
-            models.add(getContext().getSystem().actorOf(DJPredictor.props(getSelf(), config)) );
-        }
+    static public Props props() {
+        return Props.create(PortfolioManager.class, PortfolioManager::new);
     }
 
     @Override
@@ -124,7 +140,7 @@ public class PortfolioManager extends AbstractActor {
                 .match(ReceiveTimeout.class, x -> {
                     log.info("Reddit Crawler " + getSelf().path() + " received request " + ReceiveTimeout.class);
                     getContext().setReceiveTimeout(Duration.Undefined());
-                    //todo: call negotiations method and reset timeout...
+                    handlePredictionResult(predictionResults);
                 })
                 .match(DJPredictionException.class, x -> handlePredictorError(x.config))
                 .match(DJPredictorModelCommunicationError.class, x -> handlePredictorError(x.config))
