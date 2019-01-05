@@ -1,5 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import sys
+import random
 
-print(sys.argv[1])
+print([random.random() for _ in range(5)])

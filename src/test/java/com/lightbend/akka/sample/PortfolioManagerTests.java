@@ -13,6 +13,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.time.LocalDate;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -60,13 +61,13 @@ public class PortfolioManagerTests {
     public void testPredictingFinalClass() {
         Prediction p1_0 = new Prediction(0, 0.5, 1);
         Prediction p1_1 = new Prediction(1, 0.5, 2);
-        Prediction p2_0 = new Prediction(0, 0.5, 1);
-        Prediction p2_1 = new Prediction(1, 0.5, 2);
+        Prediction p2_0 = new Prediction(0, 0.4, 1);
+        Prediction p2_1 = new Prediction(1, 0.6, 2);
 
         List<Prediction> predictions = new ArrayList<>(Arrays.asList(p1_0, p1_1, p2_0, p2_1));
 
-        int result = PortfolioManager.getFinalClass(predictions);
+        AbstractMap.SimpleEntry<Integer, Double> result = PortfolioManager.getFinalClass(predictions);
 
-        Assert.assertEquals(1, result);
+        Assert.assertEquals(new AbstractMap.SimpleEntry<>(1, 0.6), result);
     }
 }

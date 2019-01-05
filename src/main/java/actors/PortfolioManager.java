@@ -6,17 +6,15 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 
 import helpers.ModelConfig;
-import helpers.CrawlerConfig;
 
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.*;
+
 import java.util.stream.Collectors;
 
 public class PortfolioManager extends AbstractActor {
@@ -82,11 +80,16 @@ public class PortfolioManager extends AbstractActor {
         return Props.create(PortfolioManager.class, PortfolioManager::new);
     }
 
-    public static int getFinalClass(List<Prediction> predictions) {
+    public static AbstractMap.SimpleEntry<Integer, Double> getFinalClass(List<Prediction> predictions) {
         Map<Integer, Double> weightedPredictions = predictions.stream().collect(Collectors.toMap(
                 Prediction::getPredictionClass, p -> p.getProbability() * p.getWeight(), (oldValue, newValue) -> oldValue + newValue));
 
-        return Collections.max(weightedPredictions.entrySet(), Map.Entry.comparingByValue()).getKey();
+        Integer finalClass = Collections.max(weightedPredictions.entrySet(), Map.Entry.comparingByValue()).getKey();
+
+        Double probability = predictions.stream().filter(p -> p.getPredictionClass() == finalClass)
+                .mapToDouble(Prediction::getProbability).max().orElseThrow(NoSuchElementException::new);
+
+        return new AbstractMap.SimpleEntry<>(finalClass, probability);
     }
 
     private PortfolioManager() {

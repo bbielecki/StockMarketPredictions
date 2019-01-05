@@ -2,6 +2,7 @@ package actors;
 
 import DomainObjects.Article;
 import DomainObjects.IndexDescriptor;
+import DomainObjects.Prediction;
 import Exceptions.CrawlingSourceUnavailableException;
 import Exceptions.EndOfFileException;
 import akka.actor.*;
@@ -163,8 +164,8 @@ public class DJPredictor extends AbstractActor {
         return configs;
     }
 
-    private void getModelPredictions(List<Article> articles) {
-        String s = null;
+    private List<Prediction> getModelPredictions(List<Article> articles) {
+        List<Prediction> predictionsToReturn = new ArrayList<>();
 
         try {
             ProcessBuilder builder = new ProcessBuilder(
@@ -174,15 +175,18 @@ public class DJPredictor extends AbstractActor {
             BufferedReader stdInput = new BufferedReader(new
                     InputStreamReader(p.getInputStream()));
 
-            //todo: match output format from model
-            while ((s = stdInput.readLine()) != null) {
-                System.out.println(s);
+            String[] predictions = stdInput.readLine().replaceAll("\\[", "")
+                    .replaceAll("\\]","").split(",");
+
+            for (int i = 0; i < predictions.length; i++) {
+                predictionsToReturn.add(new Prediction(i, Double.valueOf(predictions[i]), 1));
             }
+
         } catch (IOException e) {
             System.out.println("Reading predictions from model failed");
             e.printStackTrace();
         }
-
+        return predictionsToReturn;
     }
 
     private DJPredictor(ActorRef manager, ModelConfig modelConfig) {

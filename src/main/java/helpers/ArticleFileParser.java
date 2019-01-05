@@ -15,11 +15,13 @@ public class ArticleFileParser {
 
     private static String ARTICLES_LOCATION = "";
     private static String CSV_SPLIT_BY = ",";
+    private static int CRAWLERS_NUMBER = 5;
 
 
     public static List<Article> readArticles(LocalDate date, int readModulo){
         BufferedReader br = null;
         String line = "";
+        int articlesCount = 0;
 
         List<Article> articlesToReturn = new ArrayList<>();
 
@@ -29,13 +31,13 @@ public class ArticleFileParser {
             //skip headers
             br.readLine();
             while ((line = br.readLine()) != null) {
-                List<String> articlesByDay = new LinkedList<String>(Arrays.asList(line.split(CSV_SPLIT_BY)));
-                LocalDate day = LocalDate.parse(articlesByDay.remove(0));
+                String[] articleWithDay = line.split(CSV_SPLIT_BY,2);
+                LocalDate day = LocalDate.parse(articleWithDay[0]);
 
                 if (date.isEqual(day)) {
-                    //remove label
-                    articlesByDay.remove(0);
-                    articlesToReturn.addAll(articlesByDay.stream().map(a -> new Article(a, date)).collect(Collectors.toList()));
+                    if ((articlesCount % CRAWLERS_NUMBER) == readModulo)
+                        articlesToReturn.add(new Article(articleWithDay[1], date));
+                    articlesCount++;
                 }
             }
 
