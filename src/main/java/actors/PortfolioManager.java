@@ -8,6 +8,7 @@ import akka.event.LoggingAdapter;
 import helpers.ModelConfig;
 import helpers.CrawlerConfig;
 
+import scala.Tuple2;
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;
@@ -78,15 +79,26 @@ public class PortfolioManager extends AbstractActor {
         }
     }
 
-    static public Props props() {
-        return Props.create(PortfolioManager.class, PortfolioManager::new);
-    }
-
-    public static int getFinalClass(List<Prediction> predictions) {
+    private Map.Entry<Integer, Double> getFinalClassWithProbability(List<Prediction> predictions) {
         Map<Integer, Double> weightedPredictions = predictions.stream().collect(Collectors.toMap(
                 Prediction::getPredictionClass, p -> p.getProbability() * p.getWeight(), (oldValue, newValue) -> oldValue + newValue));
 
-        return Collections.max(weightedPredictions.entrySet(), Map.Entry.comparingByValue()).getKey();
+        return Collections.max(weightedPredictions.entrySet(), Map.Entry.comparingByValue());
+    }
+
+    private void handlePredictionResult(BlockingQueue<PredictionResult> predictionResults){
+        List<PredictionResult> results = new ArrayList<>();
+        List<Prediction> predictions = new ArrayList<>();
+
+        //take all predictions from blocked queue.
+        PredictionResult temp;
+        while ((temp = predictionResults.poll()) != null) results.add(temp);
+        //aggregate predictions from all Predictors
+        results.forEach(x -> predictions.addAll(x.predictions));
+
+        Map.Entry<Integer, Double> theBestResult = getFinalClassWithProbability(predictions);
+
+        //todo:handle theBestResult....
     }
 
     private PortfolioManager() {
@@ -99,6 +111,12 @@ public class PortfolioManager extends AbstractActor {
         for (ModelConfig config : modelConfigs) {
             models.add(getContext().getSystem().actorOf(DJPredictor.props(getSelf(), config)) );
         }
+    }
+
+
+
+    static public Props props() {
+        return Props.create(PortfolioManager.class, PortfolioManager::new);
     }
 
     @Override
@@ -121,7 +139,7 @@ public class PortfolioManager extends AbstractActor {
                 .match(ReceiveTimeout.class, x -> {
                     log.info("Reddit Crawler " + getSelf().path() + " received request " + ReceiveTimeout.class);
                     getContext().setReceiveTimeout(Duration.Undefined());
-                    //todo: call negotiations method and reset timeout...
+                    handlePredictionResult(predictionResults);
                 })
                 .match(DJPredictionException.class, x -> handlePredictorError(x.config))
                 .match(DJPredictorModelCommunicationError.class, x -> handlePredictorError(x.config))

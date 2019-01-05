@@ -2,8 +2,7 @@ package com.lightbend.akka.sample;
 
 import actors.DJPredictor;
 import actors.PortfolioManager;
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
+import akka.actor.*;
 import akka.testkit.javadsl.TestKit;
 import helpers.ModelConfig;
 import org.junit.AfterClass;
@@ -14,6 +13,8 @@ import org.junit.Test;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class PortfolioManagerTests {
     static ActorSystem system;
@@ -52,5 +53,27 @@ public class PortfolioManagerTests {
         Assert.assertTrue(!predictionResults.contains(pr_3));
         Assert.assertTrue(!predictionResults.contains(pr_4));
         Assert.assertTrue(!predictionResults.contains(pr_5));
+    }
+
+    @Test
+    public void HandlePredticionResultTest(){
+        final TestKit testProbe = new TestKit(system);
+        ActorRef actor = system.actorOf(DJPredictor.props(testProbe.getRef(), new ModelConfig()));
+        BlockingQueue<PortfolioManager.PredictionResult> queue = new LinkedBlockingQueue<>();
+        List<PortfolioManager.PredictionResult> list = new ArrayList<>();
+        try {
+            queue.put(new PortfolioManager.PredictionResult(LocalDate.now(), new ArrayList<>(), actor.path()));
+            queue.put(new PortfolioManager.PredictionResult(LocalDate.now(), new ArrayList<>(), actor.path()));
+            queue.put(new PortfolioManager.PredictionResult(LocalDate.now(), new ArrayList<>(), actor.path()));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        PortfolioManager.PredictionResult pr;
+        while ((pr = queue.poll()) != null){
+            list.add(pr);
+        }
+        Assert.assertNotNull(list);
+        Assert.assertTrue(list.size() == 3);
     }
 }
