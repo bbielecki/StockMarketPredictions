@@ -29,13 +29,17 @@ public class DJPredictor extends AbstractActor {
     private BlockingQueue<Article> receivedArticles = new LinkedBlockingQueue<>();
     private BlockingQueue<LocalDate> predictionRequests = new LinkedBlockingQueue<>();
     private static List<ActorRef> children;
+    private static int activeChildrenCounter;
     private ActorRef manager;
     private static SupervisorStrategy strategy =
             new OneForOneStrategy(10, Duration.ofMinutes(1),
                     DeciderBuilder
                             .match(NullPointerException.class, e -> SupervisorStrategy.restart())
                             .match(IOException.class, e -> SupervisorStrategy.restart())
-                            .match(FileNotFoundException.class, e-> SupervisorStrategy.stop())
+                            .match(FileNotFoundException.class, e-> {
+                                activeChildrenCounter--;
+                                return SupervisorStrategy.stop();
+                            })
                             .matchAny(o -> SupervisorStrategy.escalate())
                             .build());
 
@@ -88,8 +92,7 @@ public class DJPredictor extends AbstractActor {
     private void predict(List<Article> articles, List<IndexDescriptor> indexHistory) {
         try {
             log.info("DJ Predictor " + getSelf().path() + " is trying to communicate with model.");
-            getModelPredictions(articles);
-
+            List<Prediction> predictions = getModelPredictions(articles);
 
         } catch (Exception e) {
             log.error("During communicating with model in DJ Predictor " + getSelf().path() + e.getClass() + " has occurred");
@@ -165,7 +168,7 @@ public class DJPredictor extends AbstractActor {
                     .replaceAll("\\]","").split(",");
 
             for (int i = 0; i < predictions.length; i++) {
-                predictionsToReturn.add(new Prediction(i, Double.valueOf(predictions[i]), 1));
+                predictionsToReturn.add(new Prediction(i, Double.valueOf(predictions[i]), 1, activeChildrenCounter/predictorConfig.getMaxCrawlers()));
             }
 
         } catch (IOException e) {
@@ -180,6 +183,7 @@ public class DJPredictor extends AbstractActor {
     private DJPredictor(ActorRef manager, ModelConfig modelConfig) {
         log.info("Creating DJ Predictor");
         children = new ArrayList<>();
+        activeChildrenCounter = 0;
         this.manager = manager;
         this.predictorConfig = modelConfig;
 
@@ -192,6 +196,7 @@ public class DJPredictor extends AbstractActor {
 
         for (CrawlerConfig config : crawlerConfigs) {
             children.add(getContext().getSystem().actorOf(RedditCrawler.props(getSelf(), config)));
+            activeChildrenCounter++;
         }
     }
 
@@ -237,6 +242,7 @@ public class DJPredictor extends AbstractActor {
                     log.info("DJ Predictor " + getSelf().path() + " received message " + CrawlingSourceUnavailable.class + ". Killing a child which failed...");
 
                     getSender().tell(Kill.getInstance(), getSelf());
+                    activeChildrenCounter--;
                 })
                 .match(CrawlingException.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received message " + CrawlingSourceUnavailable.class + ". Restarting a child which failed...");

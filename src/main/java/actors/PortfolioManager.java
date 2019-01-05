@@ -106,7 +106,7 @@ public class PortfolioManager extends AbstractActor {
 
     public static AbstractMap.SimpleEntry<Integer, Double> getFinalClass(List<Prediction> predictions) {
         Map<Integer, Double> weightedPredictions = predictions.stream().collect(Collectors.toMap(
-                Prediction::getPredictionClass, p -> p.getProbability() * p.getWeight(), (oldValue, newValue) -> oldValue + newValue));
+                Prediction::getPredictionClass, p -> p.getProbability() * p.getWeight() * p.getPredictorWeight(), (oldValue, newValue) -> oldValue + newValue));
 
         Integer finalClass = Collections.max(weightedPredictions.entrySet(), Map.Entry.comparingByValue()).getKey();
 

@@ -13,13 +13,19 @@ public class Prediction {
         return weight;
     }
 
+    public double getPredictorWeight() {
+        return predictorWeight;
+    }
+
     private final int predictionClass;
     private final double probability;
     private final int weight;
+    private double predictorWeight;
 
-    public Prediction(int predictionClass, double probability, int weight){
+    public Prediction(int predictionClass, double probability, int weight, double predictorWeight){
         this.predictionClass = predictionClass;
         this.probability= probability;
         this.weight = weight;
+        this.predictorWeight = predictorWeight;
     }
 }

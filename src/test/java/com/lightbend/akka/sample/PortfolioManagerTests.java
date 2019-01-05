@@ -58,10 +58,10 @@ public class PortfolioManagerTests {
 
     @Test
     public void testPredictingFinalClass() {
-        Prediction p1_0 = new Prediction(0, 0.5, 1);
-        Prediction p1_1 = new Prediction(1, 0.5, 2);
-        Prediction p2_0 = new Prediction(0, 0.4, 1);
-        Prediction p2_1 = new Prediction(1, 0.6, 2);
+        Prediction p1_0 = new Prediction(0, 0.5, 1, 1);
+        Prediction p1_1 = new Prediction(1, 0.5, 2, 1);
+        Prediction p2_0 = new Prediction(0, 0.4, 1, 1);
+        Prediction p2_1 = new Prediction(1, 0.6, 2, 1);
 
         List<Prediction> predictions = new ArrayList<>(Arrays.asList(p1_0, p1_1, p2_0, p2_1));
 
