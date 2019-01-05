@@ -79,11 +79,11 @@ public class PortfolioManager extends AbstractActor {
         }
     }
 
-    private Map.Entry<Integer, Double> getFinalClassWithProbability(List<Prediction> predictions) {
+    private int getFinalClass(List<Prediction> predictions) {
         Map<Integer, Double> weightedPredictions = predictions.stream().collect(Collectors.toMap(
                 Prediction::getPredictionClass, p -> p.getProbability() * p.getWeight(), (oldValue, newValue) -> oldValue + newValue));
 
-        return Collections.max(weightedPredictions.entrySet(), Map.Entry.comparingByValue());
+        return Collections.max(weightedPredictions.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
     private void handlePredictionResult(BlockingQueue<PredictionResult> predictionResults){
@@ -96,7 +96,7 @@ public class PortfolioManager extends AbstractActor {
         //aggregate predictions from all Predictors
         results.forEach(x -> predictions.addAll(x.predictions));
 
-        Map.Entry<Integer, Double> theBestResult = getFinalClassWithProbability(predictions);
+//        Map.Entry<Integer, Double> theBestResult = getFinalClassWithProbability(predictions);
 
         //todo:handle theBestResult....
     }
