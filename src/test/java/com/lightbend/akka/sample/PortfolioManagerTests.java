@@ -1,5 +1,6 @@
 package com.lightbend.akka.sample;
 
+import DomainObjects.Prediction;
 import actors.DJPredictor;
 import actors.PortfolioManager;
 import akka.actor.*;
@@ -12,9 +13,8 @@ import org.junit.Test;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class PortfolioManagerTests {
     static ActorSystem system;
@@ -56,24 +56,16 @@ public class PortfolioManagerTests {
     }
 
     @Test
-    public void HandlePredticionResultTest(){
-        final TestKit testProbe = new TestKit(system);
-        ActorRef actor = system.actorOf(DJPredictor.props(testProbe.getRef(), new ModelConfig()));
-        BlockingQueue<PortfolioManager.PredictionResult> queue = new LinkedBlockingQueue<>();
-        List<PortfolioManager.PredictionResult> list = new ArrayList<>();
-        try {
-            queue.put(new PortfolioManager.PredictionResult(LocalDate.now(), new ArrayList<>(), actor.path()));
-            queue.put(new PortfolioManager.PredictionResult(LocalDate.now(), new ArrayList<>(), actor.path()));
-            queue.put(new PortfolioManager.PredictionResult(LocalDate.now(), new ArrayList<>(), actor.path()));
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+    public void testPredictingFinalClass() {
+        Prediction p1_0 = new Prediction(0, 0.5, 1);
+        Prediction p1_1 = new Prediction(1, 0.5, 2);
+        Prediction p2_0 = new Prediction(0, 0.5, 1);
+        Prediction p2_1 = new Prediction(1, 0.5, 2);
 
-        PortfolioManager.PredictionResult pr;
-        while ((pr = queue.poll()) != null){
-            list.add(pr);
-        }
-        Assert.assertNotNull(list);
-        Assert.assertTrue(list.size() == 3);
+        List<Prediction> predictions = new ArrayList<>(Arrays.asList(p1_0, p1_1, p2_0, p2_1));
+
+        int result = PortfolioManager.getFinalClass(predictions);
+
+        Assert.assertEquals(1, result);
     }
 }
