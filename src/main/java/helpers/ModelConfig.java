@@ -1,9 +1,18 @@
 package helpers;
 
 public class ModelConfig {
-    private int maxCrawlers = 5;
 
+    private int maxCrawlers = 5;
     private String modelPath;
+    private String indexHistoryPath;
+
+    public int getMaxCrawlers() {
+        return maxCrawlers;
+    }
+
+    public void setMaxCrawlers(int maxCrawlers) {
+        this.maxCrawlers = maxCrawlers;
+    }
 
     public String getModelPath() {
         return modelPath;
@@ -13,11 +22,11 @@ public class ModelConfig {
         this.modelPath = modelPath;
     }
 
-    public int getMaxCrawlers() {
-        return maxCrawlers;
+    public String getIndexHistoryPath() {
+        return indexHistoryPath;
     }
 
-    public void setMaxCrawlers(int maxCrawlers) {
-        this.maxCrawlers = maxCrawlers;
+    public void setIndexHistoryPath(String indexHistoryPath) {
+        this.indexHistoryPath = indexHistoryPath;
     }
 }

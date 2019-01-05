@@ -3,8 +3,6 @@ package actors;
 import DomainObjects.Article;
 import DomainObjects.IndexDescriptor;
 import DomainObjects.Prediction;
-import Exceptions.CrawlingSourceUnavailableException;
-import Exceptions.EndOfFileException;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
@@ -19,7 +17,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 public class DJPredictor extends AbstractActor {
@@ -89,6 +88,10 @@ public class DJPredictor extends AbstractActor {
         return receivedArticles.stream().filter(article -> article.getDate().isEqual(articlesDate)).collect(Collectors.toList());
     }
 
+    private List<IndexDescriptor> getIndexHistoryByDate(LocalDate dateOfPrediction) {
+        return IndexHistoryReader.readHistory(predictorConfig.getIndexHistoryPath(), dateOfPrediction, 1);
+    }
+
     private void predict(List<Article> articles, List<IndexDescriptor> indexHistory) {
         try {
             log.info("DJ Predictor " + getSelf().path() + " is trying to communicate with model.");
@@ -116,7 +119,8 @@ public class DJPredictor extends AbstractActor {
                 manager.tell(new PortfolioManager.PredictionResult(dateOfPrediction, new ArrayList<>(), getSelf().path()), getSelf());
 
                 List<Article> articleForPrediction = getArticlesByDate(dateOfPrediction);
-                predict(articleForPrediction, IndexHistoryReader.readHistory(dateOfPrediction, 1, TimeUnit.DAYS));
+                List<IndexDescriptor> indexHistoryForPrediction = getIndexHistoryByDate(dateOfPrediction);
+                predict(articleForPrediction, indexHistoryForPrediction);
 
             } catch (Exception e) {
                 log.error("In DJ Predictor " + getSelf().path() + " an error " + e.getMessage() + "has occurred. Sending information to Manager.");
