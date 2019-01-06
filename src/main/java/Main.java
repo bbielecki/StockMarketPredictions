@@ -10,7 +10,6 @@ import java.util.Scanner;
 public class Main {
     public static void main(String[] args) {
         final ActorSystem system = ActorSystem.create("StockMarketPredictions");
-        ActorRef portfolioManager = system.actorOf(PortfolioManager.props(), "PortfolioManager");
         Scanner input = new Scanner(System.in);
         boolean stop = false;
         List<LocalDate> predictionDates = PredictionDatesReader.getAsList();
@@ -31,6 +30,7 @@ public class Main {
             String response = input.nextLine();
             if(response.equals("N")) stop=true;
             else if(response.equals("Y")){
+                ActorRef portfolioManager = system.actorOf(PortfolioManager.props(), "PortfolioManager");
                 portfolioManager.tell(new PortfolioManager.StartPrediction(predictionDates.remove(0)), ActorRef.noSender());
                 System.out.println("Please wait for result...");
                 System.out.println();

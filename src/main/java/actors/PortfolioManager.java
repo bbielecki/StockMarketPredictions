@@ -85,6 +85,10 @@ public class PortfolioManager extends AbstractActor {
     }
 
     private void handlePredictionResult(BlockingQueue<PredictionResult> predictionResults){
+        if(predictionResults.size() == 0){
+            log.info("No Prediction Results. Portfolio Manager finished its job.");
+            return;
+        }
         List<PredictionResult> results = new ArrayList<>();
         List<Prediction> predictions = new ArrayList<>();
 
@@ -146,6 +150,7 @@ public class PortfolioManager extends AbstractActor {
         return receiveBuilder()
                 .match(StartPrediction.class, x->{
                     log.info("Portfolio Manager " + getSelf().path() + " is starting prediction on date: " + LocalDate.now());
+                    getContext().setReceiveTimeout(Duration.create(6, TimeUnit.SECONDS));
                     Duration timeout = Duration.create(5, TimeUnit.SECONDS);
 
                     log.info("Portfolio Manager " + getSelf().path() + " is creating all related predictors.");
@@ -161,12 +166,12 @@ public class PortfolioManager extends AbstractActor {
                     }
                 })
                 .match(ReceiveTimeout.class, x -> {
-                    log.info("Reddit Crawler " + getSelf().path() + " received request " + ReceiveTimeout.class);
+                    log.info("Prtfolio Manager " + getSelf().path() + " received request " + ReceiveTimeout.class);
                     getContext().setReceiveTimeout(Duration.Undefined());
                     handlePredictionResult(predictionResults);
 
                     log.info("Portfolio Manager is going destroy itself.");
-                    getSelf().tell(Kill.getInstance(), ActorRef.noSender());
+                    getContext().stop(getSelf());
                 })
                 .match(DJPredictionException.class, x -> handlePredictorError(x.config))
                 .match(DJPredictorModelCommunicationError.class, x -> handlePredictorError(x.config))

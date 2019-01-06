@@ -13,8 +13,8 @@ public class PredictorConfigReader {
         List<ModelConfig> configs = new ArrayList<>();
         List<String> configFilesRelativePaths = new ArrayList<>();
         configFilesRelativePaths.add("PredictorConfigs/predictor1.properties");
-        configFilesRelativePaths.add("PredictorConfigs/predictor2.properties");
-        configFilesRelativePaths.add("PredictorConfigs/predictor3.properties");
+//        configFilesRelativePaths.add("PredictorConfigs/predictor2.properties");
+//        configFilesRelativePaths.add("PredictorConfigs/predictor3.properties");
 
         for (String path : configFilesRelativePaths){
             configs.add(getConfig(path));
