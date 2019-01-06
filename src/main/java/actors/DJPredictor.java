@@ -1,22 +1,21 @@
 package actors;
 
-import DomainObjects.Article;
-import DomainObjects.IndexDescriptor;
-import DomainObjects.Prediction;
+import DomainObjects.*;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.DeciderBuilder;
-import DomainObjects.CrawlerConfig;
+import helpers.CrawlerConfigReader;
 import helpers.IndexHistoryReader;
-import DomainObjects.ModelConfig;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
@@ -132,22 +131,10 @@ public class DJPredictor extends AbstractActor {
     }
 
     private List<CrawlerConfig> readCrawlerConfigs() {
-        ArrayList<FileInputStream> propertiesStreams = new ArrayList<>();
-        ArrayList<CrawlerConfig> configs = new ArrayList<>();
+        List<CrawlerConfig> configs = new ArrayList<>();
 
         try {
-            propertiesStreams.add(new FileInputStream("crawler1.properties"));
-            propertiesStreams.add(new FileInputStream("crawler2.properties"));
-            propertiesStreams.add(new FileInputStream("crawler3.properties"));
-            propertiesStreams.add(new FileInputStream("crawler4.properties"));
-            propertiesStreams.add(new FileInputStream("crawler5.properties"));
-
-            for (FileInputStream fis : propertiesStreams) {
-                Properties prop = new Properties();
-                prop.load(fis);
-
-                configs.add(new CrawlerConfig(Integer.getInteger(prop.getProperty("readModulo"))));
-            }
+            configs = CrawlerConfigReader.getAsList();
         } catch (IOException e) {
             e.printStackTrace();
             log.error("DJ Predictor " + getSelf().path() + " cannot read all properties files.");
