@@ -1,4 +1,4 @@
-package com.lightbend.akka.sample;
+package helpers;
 
 import helpers.PredictionDatesReader;
 import org.junit.Assert;

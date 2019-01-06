@@ -1,6 +1,7 @@
 package actors;
 
 import DomainObjects.Prediction;
+import akka.ConfigurationException;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
@@ -8,6 +9,7 @@ import akka.event.LoggingAdapter;
 import DomainObjects.ModelConfig;
 
 import helpers.PredictionClassTranslator;
+import helpers.PredictorConfigReader;
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;
@@ -111,9 +113,14 @@ public class PortfolioManager extends AbstractActor {
         modelConfigs = new ArrayList<>();
         models = new ArrayList<>();
 
-        modelConfigs.add(new ModelConfig());
+        modelConfigs = PredictorConfigReader.getAsList();
+        if(modelConfigs == null || modelConfigs.size() == 0) throw new ConfigurationException("Portfolio Manager cannot read DJ Predictors configuration.");
+    }
+
+    private void createChildren() {
+        int i = 1;
         for (ModelConfig config : modelConfigs) {
-            models.add(getContext().actorOf(DJPredictor.props(getSelf(), config), DJPredictor.class.getSimpleName()) );
+            models.add(getContext().actorOf(DJPredictor.props(getSelf(), config), DJPredictor.class.getSimpleName() + i++) );
         }
     }
 
@@ -140,6 +147,9 @@ public class PortfolioManager extends AbstractActor {
                 .match(StartPrediction.class, x->{
                     log.info("Portfolio Manager " + getSelf().path() + " is starting prediction on date: " + LocalDate.now());
                     Duration timeout = Duration.create(5, TimeUnit.SECONDS);
+
+                    log.info("Portfolio Manager " + getSelf().path() + " is creating all related predictors.");
+                    createChildren();
                     models.forEach(model -> model.tell(new DJPredictor.StartPrediction(x.predictionDate, timeout), getSelf()));
                 })
                 .match(PredictionResult.class, x->{

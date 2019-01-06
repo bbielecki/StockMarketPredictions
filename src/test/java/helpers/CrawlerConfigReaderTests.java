@@ -1,4 +1,4 @@
-package com.lightbend.akka.sample;
+package helpers;
 
 import DomainObjects.CrawlerConfig;
 import helpers.CrawlerConfigReader;

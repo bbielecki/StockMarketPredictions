@@ -25,11 +25,13 @@ public class Main {
         while (!stop){
             System.out.println("Do you want to predict another Dow Jones Index value?");
             System.out.println("Press enter Y(yes) or N(no)");
+            System.out.println();
+            System.out.println();
+
             String response = input.nextLine();
             if(response.equals("N")) stop=true;
             else if(response.equals("Y")){
                 portfolioManager.tell(new PortfolioManager.StartPrediction(predictionDates.remove(0)), ActorRef.noSender());
-                System.out.println();
                 System.out.println("Please wait for result...");
                 System.out.println();
                 System.out.println();
@@ -42,5 +44,6 @@ public class Main {
 
         System.out.println("Enter q to quit.");
         input.nextLine();
+        system.terminate();
     }
 }
