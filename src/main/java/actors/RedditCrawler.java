@@ -4,7 +4,7 @@ import Exceptions.CrawlingSourceUnavailableException;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import helpers.CrawlerConfig;
+import DomainObjects.CrawlerConfig;
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;

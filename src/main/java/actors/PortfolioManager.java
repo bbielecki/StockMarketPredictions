@@ -5,9 +5,9 @@ import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 
-import helpers.ModelConfig;
+import DomainObjects.ModelConfig;
 
-import scala.Tuple2;
+import helpers.PredictionClassTranslator;
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;
@@ -44,7 +44,12 @@ public class PortfolioManager extends AbstractActor {
             return predictionDate.equals(pr.predictionDate) && predictorPath.equals(pr.predictorPath);
         }
     }
-    public static class StartPrediction{ }
+    public static class StartPrediction{
+        public final LocalDate predictionDate;
+        public StartPrediction(LocalDate predictionDate){
+            this.predictionDate = predictionDate;
+        }
+    }
     public static class DJPredictionException{
         public final ModelConfig config;
 
@@ -87,9 +92,17 @@ public class PortfolioManager extends AbstractActor {
         //aggregate predictions from all Predictors
         results.forEach(x -> predictions.addAll(x.predictions));
 
-//        Map.Entry<Integer, Double> theBestResult = getFinalClassWithProbability(predictions);
+        presentResultOnConsole( getFinalClass(predictions) );
 
-        //todo:handle theBestResult....
+    }
+
+    private void presentResultOnConsole(Map.Entry<Integer, Double> theBestResult){
+        System.out.println();
+        System.out.println();
+        System.out.println("The best model predicted that Dow Jones Index Value will have " + PredictionClassTranslator.ToDescription(theBestResult.getKey()));
+        System.out.println("This prediction was made with " + theBestResult.getValue() + "% confidence.");
+        System.out.println();
+        System.out.println();
     }
 
     private PortfolioManager() {
@@ -126,8 +139,8 @@ public class PortfolioManager extends AbstractActor {
         return receiveBuilder()
                 .match(StartPrediction.class, x->{
                     log.info("Portfolio Manager " + getSelf().path() + " is starting prediction on date: " + LocalDate.now());
-                    Duration timeout = Duration.create(100, TimeUnit.MILLISECONDS);
-                    models.forEach(model -> model.tell(new DJPredictor.StartPrediction(LocalDate.now(), timeout), getSelf()));
+                    Duration timeout = Duration.create(5, TimeUnit.SECONDS);
+                    models.forEach(model -> model.tell(new DJPredictor.StartPrediction(x.predictionDate, timeout), getSelf()));
                 })
                 .match(PredictionResult.class, x->{
                     log.info("Portfolio Manager " + getSelf().path() + " received prediction result.");

@@ -1,4 +1,4 @@
-package helpers;
+package DomainObjects;
 
 public class ModelConfig {
     private int maxCrawlers = 5;

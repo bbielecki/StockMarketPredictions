@@ -1,4 +1,4 @@
-package helpers;
+package DomainObjects;
 
 public class CrawlerConfig {
     private int readModulo;

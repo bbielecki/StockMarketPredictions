@@ -5,7 +5,7 @@ import actors.DJPredictor;
 import actors.PortfolioManager;
 import akka.actor.*;
 import akka.testkit.javadsl.TestKit;
-import helpers.ModelConfig;
+import DomainObjects.ModelConfig;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;

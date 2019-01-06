@@ -3,15 +3,13 @@ package actors;
 import DomainObjects.Article;
 import DomainObjects.IndexDescriptor;
 import DomainObjects.Prediction;
-import Exceptions.CrawlingSourceUnavailableException;
-import Exceptions.EndOfFileException;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.DeciderBuilder;
-import helpers.CrawlerConfig;
+import DomainObjects.CrawlerConfig;
 import helpers.IndexHistoryReader;
-import helpers.ModelConfig;
+import DomainObjects.ModelConfig;
 
 import java.io.*;
 import java.time.Duration;

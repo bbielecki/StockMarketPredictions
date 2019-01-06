@@ -4,7 +4,7 @@ import static org.junit.Assert.assertNotNull;
 
 import actors.DJPredictor;
 import actors.RedditCrawler;
-import helpers.CrawlerConfig;
+import DomainObjects.CrawlerConfig;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
