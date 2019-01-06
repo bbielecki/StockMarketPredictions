@@ -91,10 +91,14 @@ public class DJPredictor extends AbstractActor {
         return IndexHistoryReader.readHistory(predictorConfig.getIndexHistoryPath(), dateOfPrediction, 1);
     }
 
-    private void predict(List<Article> articles, List<IndexDescriptor> indexHistory) {
+    private void predict(List<Article> articles, List<IndexDescriptor> indexHistory, LocalDate predictionDate) {
         try {
             log.info("DJ Predictor " + getSelf().path() + " is trying to communicate with model.");
+            //todo: use indexHistory!
             List<Prediction> predictions = getModelPredictions(articles);
+
+            PortfolioManager.PredictionResult predictionResult = new PortfolioManager.PredictionResult(predictionDate, predictions, getSelf().path());
+            manager.tell(predictionResult, getSelf());
 
         } catch (Exception e) {
             log.error("During communicating with model in DJ Predictor " + getSelf().path() + e.getClass() + " has occurred");
@@ -112,14 +116,14 @@ public class DJPredictor extends AbstractActor {
 
         new Thread(() -> {
             try {
-                LocalDate dateOfPrediction = predictionRequests.take();
+                LocalDate predictionDate = predictionRequests.take();
 
                 //todo: delete after tests
-                manager.tell(new PortfolioManager.PredictionResult(dateOfPrediction, new ArrayList<>(), getSelf().path()), getSelf());
+                manager.tell(new PortfolioManager.PredictionResult(predictionDate, new ArrayList<>(), getSelf().path()), getSelf());
 
-                List<Article> articleForPrediction = getArticlesByDate(dateOfPrediction);
-                List<IndexDescriptor> indexHistoryForPrediction = getIndexHistoryByDate(dateOfPrediction);
-                predict(articleForPrediction, indexHistoryForPrediction);
+                List<Article> articleForPrediction = getArticlesByDate(predictionDate);
+                List<IndexDescriptor> indexHistoryForPrediction = getIndexHistoryByDate(predictionDate);
+//                predict(articleForPrediction, indexHistoryForPrediction, predictionDate);
 
             } catch (Exception e) {
                 log.error("In DJ Predictor " + getSelf().path() + " an error " + e.getMessage() + "has occurred. Sending information to Manager.");
@@ -185,8 +189,9 @@ public class DJPredictor extends AbstractActor {
             manager.tell(new PortfolioManager.DJPredictorCrawlersException(predictorConfig), getSelf());
         }
 
+        int i = 1;
         for (CrawlerConfig config : crawlerConfigs) {
-            children.add(getContext().getSystem().actorOf(RedditCrawler.props(getSelf(), config)));
+            children.add(getContext().actorOf(RedditCrawler.props(getSelf(), config), RedditCrawler.class.getSimpleName() + i++));
             activeChildrenCounter++;
         }
     }

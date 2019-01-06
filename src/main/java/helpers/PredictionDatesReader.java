@@ -8,10 +8,10 @@ import java.util.List;
 import java.util.Properties;
 
 public class PredictionDatesReader {
-    public List<LocalDate> getAsList(){
+    public static List<LocalDate> getAsList(){
         return getAsList("MainConfigs/predictionDates.properties");
     }
-    public List<LocalDate> getAsList(String resourcePath){
+    public static List<LocalDate> getAsList(String resourcePath){
         List<LocalDate> predictionDates = new ArrayList<>();
         try {
             InputStream inputStream = ClassLoader.getSystemResourceAsStream(resourcePath);

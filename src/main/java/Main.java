@@ -1,3 +1,6 @@
+import actors.PortfolioManager;
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
 import helpers.PredictionDatesReader;
 
 import java.time.LocalDate;
@@ -6,11 +9,11 @@ import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
-//        final ActorSystem system = ActorSystem.create("StockMarketPredictions");
+        final ActorSystem system = ActorSystem.create("StockMarketPredictions");
+        ActorRef portfolioManager = system.actorOf(PortfolioManager.props(), "PortfolioManager");
         Scanner input = new Scanner(System.in);
         boolean stop = false;
-        PredictionDatesReader predictionDatesReader = new PredictionDatesReader();
-        List<LocalDate> predictionDates = predictionDatesReader.getAsList();
+        List<LocalDate> predictionDates = PredictionDatesReader.getAsList();
 
         if(predictionDates.size() == 0) {
             System.out.println("Configuration error has occurred. Sorry...");
@@ -25,7 +28,7 @@ public class Main {
             String response = input.nextLine();
             if(response.equals("N")) stop=true;
             else if(response.equals("Y")){
-//                printerActor.tell(new PortfolioManager.StartPrediction(readPredictionDates().remove(0)), ActorRef.noSender());
+                portfolioManager.tell(new PortfolioManager.StartPrediction(predictionDates.remove(0)), ActorRef.noSender());
                 System.out.println();
                 System.out.println("Please wait for result...");
                 System.out.println();

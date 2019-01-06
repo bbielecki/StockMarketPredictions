@@ -113,7 +113,7 @@ public class PortfolioManager extends AbstractActor {
 
         modelConfigs.add(new ModelConfig());
         for (ModelConfig config : modelConfigs) {
-            models.add(getContext().getSystem().actorOf(DJPredictor.props(getSelf(), config)) );
+            models.add(getContext().actorOf(DJPredictor.props(getSelf(), config), DJPredictor.class.getSimpleName()) );
         }
     }
 
@@ -154,6 +154,9 @@ public class PortfolioManager extends AbstractActor {
                     log.info("Reddit Crawler " + getSelf().path() + " received request " + ReceiveTimeout.class);
                     getContext().setReceiveTimeout(Duration.Undefined());
                     handlePredictionResult(predictionResults);
+
+                    log.info("Portfolio Manager is going destroy itself.");
+                    getSelf().tell(Kill.getInstance(), ActorRef.noSender());
                 })
                 .match(DJPredictionException.class, x -> handlePredictorError(x.config))
                 .match(DJPredictorModelCommunicationError.class, x -> handlePredictorError(x.config))
