@@ -37,12 +37,8 @@ public class RedditCrawler extends AbstractActor {
 
     //should get the configuration which determine the range of the articles (first 5, random 5 etc...)
     private void crawlDataSource(LocalDate articlesDate){
-        log.error("In Reddit Crawler " + getSelf().path() + CrawlingSourceUnavailableException.class + " has occurred");
-        predictor.tell(new DJPredictor.CrawlingSourceUnavailable(this.config), getSelf());
-        //get articles by date.
         try{
-            //todo: use config
-            List<Article> newArticles = ArticleFileParser.readArticles(LocalDate.now(),config.getReadModulo(), config.getPathToFile());
+            List<Article> newArticles = ArticleFileParser.readArticles(articlesDate, config.getReadModulo(), config.getPathToFile());
 
             //automatically send crawled articles to subscribed index predictor
             if (!newArticles.isEmpty())

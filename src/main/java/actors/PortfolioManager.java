@@ -149,8 +149,9 @@ public class PortfolioManager extends AbstractActor {
 
         return receiveBuilder()
                 .match(StartPrediction.class, x->{
-                    log.info("Portfolio Manager " + getSelf().path() + " is starting prediction on date: " + LocalDate.now());
-                    getContext().setReceiveTimeout(Duration.create(6, TimeUnit.SECONDS));
+                    log.info("Portfolio Manager " + getSelf().path() + " is starting prediction on date: " + x.predictionDate);
+                    // TODO Eliminate race
+                    getContext().setReceiveTimeout(Duration.create(10, TimeUnit.SECONDS));
                     Duration timeout = Duration.create(5, TimeUnit.SECONDS);
 
                     log.info("Portfolio Manager " + getSelf().path() + " is creating all related predictors.");
