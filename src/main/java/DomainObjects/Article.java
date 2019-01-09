@@ -24,7 +24,7 @@ public class Article {
     public JSONObject toJsonObject() {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("header", header);
-        jsonObject.put("date", date);
+        jsonObject.put("date", date.toString());
         return jsonObject;
     }
 }

@@ -56,7 +56,7 @@ public class IndexDescriptor {
 
     public JSONObject toJsonObject() {
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("date", date);
+        jsonObject.put("date", date.toString());
         jsonObject.put("openValue", openValue);
         jsonObject.put("closeValue", closeValue);
         return jsonObject;
