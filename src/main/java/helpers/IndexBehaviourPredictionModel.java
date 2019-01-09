@@ -51,7 +51,7 @@ public class IndexBehaviourPredictionModel implements Closeable {
 
         JSONArray indexHistoryJsonArray = new JSONArray();
         indexHistoryJsonArray.addAll(indexHistory.stream().map(IndexDescriptor::toJsonObject).collect(toSet()));
-        modelInputJsonObject.put("indexHistory", indexHistory);
+        modelInputJsonObject.put("indexHistory", indexHistoryJsonArray);
 
         return modelInputJsonObject.toJSONString();
     }
