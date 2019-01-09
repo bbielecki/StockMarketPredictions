@@ -1,5 +1,7 @@
 package DomainObjects;
 
+import java.util.Objects;
+
 public class Prediction {
     public int getPredictionClass() {
         return predictionClass;
@@ -27,5 +29,21 @@ public class Prediction {
         this.probability= probability;
         this.weight = weight;
         this.predictorWeight = predictorWeight;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Prediction that = (Prediction) o;
+        return predictionClass == that.predictionClass &&
+                Double.compare(that.probability, probability) == 0 &&
+                weight == that.weight &&
+                Double.compare(that.predictorWeight, predictorWeight) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(predictionClass, probability, weight, predictorWeight);
     }
 }

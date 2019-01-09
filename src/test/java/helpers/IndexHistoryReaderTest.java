@@ -23,7 +23,7 @@ public class IndexHistoryReaderTest {
         // when
         List<IndexDescriptor> actual = IndexHistoryReader.readHistory(filePath, predictionDate, windowSize);
         List<IndexDescriptor> expected = singletonList(
-                new IndexDescriptor(17712.759766, 17929.990234)
+                new IndexDescriptor(predictionDate.minusDays(1), 17712.759766, 17929.990234)
         );
 
         // then
@@ -40,9 +40,9 @@ public class IndexHistoryReaderTest {
         // when
         List<IndexDescriptor> actual = IndexHistoryReader.readHistory(filePath, predictionDate, windowSize);
         List<IndexDescriptor> expected = asList(
-                new IndexDescriptor(17712.759766, 17929.990234),
-                new IndexDescriptor(17456.019531, 17694.679688),
-                new IndexDescriptor(17190.509766, 17409.720703)
+                new IndexDescriptor(predictionDate.minusDays(1), 17712.759766, 17929.990234),
+                new IndexDescriptor(predictionDate.minusDays(2), 17456.019531, 17694.679688),
+                new IndexDescriptor(predictionDate.minusDays(3), 17190.509766, 17409.720703)
         );
 
         // then

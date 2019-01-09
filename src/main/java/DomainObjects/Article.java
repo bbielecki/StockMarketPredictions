@@ -1,7 +1,8 @@
 package DomainObjects;
 
+import org.json.simple.JSONObject;
+
 import java.time.LocalDate;
-import java.util.Date;
 
 public class Article {
     private String header;
@@ -18,5 +19,12 @@ public class Article {
     public Article(String header, LocalDate date){
         this.header = header;
         this.date = date;
+    }
+
+    public JSONObject toJsonObject() {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("header", header);
+        jsonObject.put("date", date);
+        return jsonObject;
     }
 }

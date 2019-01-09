@@ -6,19 +6,20 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.DeciderBuilder;
 import helpers.CrawlerConfigReader;
+import helpers.IndexBehaviourPredictionModel;
 import helpers.IndexHistoryReader;
 
-import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
+
+import static java.util.Collections.nCopies;
+import static java.util.stream.Collectors.toList;
 
 public class DJPredictor extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
@@ -84,7 +85,7 @@ public class DJPredictor extends AbstractActor {
 
 
     private List<Article> getArticlesByDate(LocalDate articlesDate) {
-        return receivedArticles.stream().filter(article -> article.getDate().isEqual(articlesDate)).collect(Collectors.toList());
+        return receivedArticles.stream().filter(article -> article.getDate().isEqual(articlesDate)).collect(toList());
     }
 
     private List<IndexDescriptor> getIndexHistoryByDate(LocalDate dateOfPrediction) {
@@ -94,9 +95,7 @@ public class DJPredictor extends AbstractActor {
     private void predict(List<Article> articles, List<IndexDescriptor> indexHistory, LocalDate predictionDate) {
         try {
             log.info("DJ Predictor " + getSelf().path() + " is trying to communicate with model.");
-            //todo: use indexHistory!
-            List<Prediction> predictions = getModelPredictions(articles);
-
+            List<Prediction> predictions = getModelPredictions(articles, indexHistory);
             PortfolioManager.PredictionResult predictionResult = new PortfolioManager.PredictionResult(predictionDate, predictions, getSelf().path());
             manager.tell(predictionResult, getSelf());
 
@@ -148,24 +147,13 @@ public class DJPredictor extends AbstractActor {
         return configs;
     }
 
-    private List<Prediction> getModelPredictions(List<Article> articles) {
+    private List<Prediction> getModelPredictions(List<Article> articles, List<IndexDescriptor> indexHistory) {
         List<Prediction> predictionsToReturn = new ArrayList<>();
-
         try {
-            ProcessBuilder builder = new ProcessBuilder(
-                    "cmd.exe", "/c", "cd \"src\\main\\models\" && python test.py Hello");
-            builder.redirectErrorStream(true);
-            Process p = builder.start();
-            BufferedReader stdInput = new BufferedReader(new
-                    InputStreamReader(p.getInputStream()));
-
-            String[] predictions = stdInput.readLine().replaceAll("\\[", "")
-                    .replaceAll("\\]","").split(",");
-
-            for (int i = 0; i < predictions.length; i++) {
-                predictionsToReturn.add(new Prediction(i, Double.valueOf(predictions[i]), 1, activeChildrenCounter/predictorConfig.getMaxCrawlers()));
-            }
-
+            IndexBehaviourPredictionModel model = new IndexBehaviourPredictionModel(
+                    predictorConfig.getModelPath(),
+                    nCopies(5, (double) activeChildrenCounter / predictorConfig.getMaxCrawlers()));
+            model.predict(articles, indexHistory);
         } catch (IOException e) {
             System.out.println("Reading predictions from model failed");
             manager.tell(new PortfolioManager.DJPredictorModelCommunicationError(predictorConfig), getSelf());

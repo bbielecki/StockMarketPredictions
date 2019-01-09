@@ -37,9 +37,9 @@ public class IndexHistoryReader {
                 if (rowDate.isAfter(firstHistoryDate) && rowDate.isBefore(predictionDate)) {
 
                     IndexDescriptor indexDescriptor = new IndexDescriptor(
+                            rowDate,
                             Double.valueOf(row[1]),
-                            Double.valueOf(row[4])
-                    );
+                            Double.valueOf(row[4]));
                     indexDescriptors.add(indexDescriptor);
                 }
             }
