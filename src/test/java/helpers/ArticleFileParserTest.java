@@ -13,11 +13,11 @@ public class ArticleFileParserTest {
 
     @Test
     public void readArticlesFromOneDay() {
-        String path = "./src/main/resources/RedditNews.csv";
+        String filePath = getClass().getResource("/helpers/ArticleFileParserTestFile.csv").getPath();
         int modulo = 0;
         LocalDate date = LocalDate.parse("2016-07-01");
 
-        List<Article> articles = ArticleFileParser.readArticles(date, modulo, path);
+        List<Article> articles = ArticleFileParser.readArticles(date, modulo, filePath);
 
         assertTrue(articles.size() > 0);
         assertEquals(date, articles.get(0).getDate());
