@@ -3,6 +3,7 @@ package helpers;
 import DomainObjects.Article;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 import java.io.BufferedReader;
@@ -13,12 +14,11 @@ import java.util.stream.Collectors;
 
 public class ArticleFileParser {
 
-    private static String ARTICLES_LOCATION = "";
     private static String CSV_SPLIT_BY = ",";
     private static int CRAWLERS_NUMBER = 5;
 
 
-    public static List<Article> readArticles(LocalDate date, int readModulo){
+    public static List<Article> readArticles(LocalDate date, int readModulo, String pathToFile){
         BufferedReader br = null;
         String line = "";
         int articlesCount = 0;
@@ -26,18 +26,22 @@ public class ArticleFileParser {
         List<Article> articlesToReturn = new ArrayList<>();
 
         try {
-            br = new BufferedReader(new FileReader(ARTICLES_LOCATION));
+            br = new BufferedReader(new FileReader(pathToFile));
 
             //skip headers
             br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] articleWithDay = line.split(CSV_SPLIT_BY,2);
-                LocalDate day = LocalDate.parse(articleWithDay[0]);
+                try {
+                    LocalDate day = LocalDate.parse(articleWithDay[0]);
 
-                if (date.isEqual(day)) {
-                    if ((articlesCount % CRAWLERS_NUMBER) == readModulo)
-                        articlesToReturn.add(new Article(articleWithDay[1], date));
-                    articlesCount++;
+                    if (date.isEqual(day)) {
+                        if ((articlesCount % CRAWLERS_NUMBER) == readModulo)
+                            articlesToReturn.add(new Article(articleWithDay[1], date));
+                        articlesCount++;
+                 }
+                } catch (DateTimeParseException e) {
+                    continue;
                 }
             }
 

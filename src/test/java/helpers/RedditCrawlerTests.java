@@ -35,7 +35,7 @@ public class RedditCrawlerTests {
         final TestKit testProbe = new TestKit(system);
         LocalDate now = LocalDate.now();
 
-        final ActorRef redditCrawler = system.actorOf(RedditCrawler.props(testProbe.getRef(), new CrawlerConfig(0)));
+        final ActorRef redditCrawler = system.actorOf(RedditCrawler.props(testProbe.getRef(), new CrawlerConfig(0,"")));
         redditCrawler.tell(new RedditCrawler.StartCrawling(now), ActorRef.noSender());
 
         DJPredictor.CrawlerConfirmation message = testProbe.expectMsgClass(Duration.ofSeconds(5), DJPredictor.CrawlerConfirmation.class);
@@ -47,7 +47,7 @@ public class RedditCrawlerTests {
         final TestKit testProbe = new TestKit(system);
         LocalDate now = LocalDate.now();
 
-        final ActorRef redditCrawler = system.actorOf(RedditCrawler.props(testProbe.getRef(), new CrawlerConfig(0)));
+        final ActorRef redditCrawler = system.actorOf(RedditCrawler.props(testProbe.getRef(), new CrawlerConfig(0,"")));
         redditCrawler.tell(new RedditCrawler.StartCrawling(now), ActorRef.noSender());
 
         DJPredictor.CrawlerConfirmation confirmation = testProbe.expectMsgClass(Duration.ofSeconds(5), DJPredictor.CrawlerConfirmation.class);

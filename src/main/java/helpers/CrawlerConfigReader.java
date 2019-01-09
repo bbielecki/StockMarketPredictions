@@ -30,6 +30,7 @@ public class CrawlerConfigReader {
         prop.load(is);
 
         int readModulo = Integer.parseInt(prop.getProperty("readModulo"));
-        return new CrawlerConfig(readModulo);
+        String pathToFile = prop.getProperty("pathToFile");
+        return new CrawlerConfig(readModulo, pathToFile);
     }
 }

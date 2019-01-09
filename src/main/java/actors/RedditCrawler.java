@@ -1,13 +1,16 @@
 package actors;
 
+import DomainObjects.Article;
 import Exceptions.CrawlingSourceUnavailableException;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import DomainObjects.CrawlerConfig;
+import helpers.ArticleFileParser;
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -37,22 +40,22 @@ public class RedditCrawler extends AbstractActor {
         log.error("In Reddit Crawler " + getSelf().path() + CrawlingSourceUnavailableException.class + " has occurred");
         predictor.tell(new DJPredictor.CrawlingSourceUnavailable(this.config), getSelf());
         //get articles by date.
-//        try{
-//            //todo: use config
-//            List<Article> newArticles = ArticleFileParser.readArticles(LocalDate.now());
-//
-//            //automatically send crawled articles to subscribed index predictor
-//            if (!newArticles.isEmpty())
-//                predictor.tell(new DJPredictor.Headers(newArticles), getSelf());
-//            else
-//                predictor.tell(new DJPredictor.NoNewHeaders(), getSelf());
-//
-//            getContext().setReceiveTimeout(Duration.Undefined());
-//        }
-//        catch (Exception e){
-//            getContext().setReceiveTimeout(Duration.Undefined());
-//            predictor.tell(new Status.Failure(e), getSelf());
-//        }
+        try{
+            //todo: use config
+            List<Article> newArticles = ArticleFileParser.readArticles(LocalDate.now(),config.getReadModulo(), config.getPathToFile());
+
+            //automatically send crawled articles to subscribed index predictor
+            if (!newArticles.isEmpty())
+                predictor.tell(new DJPredictor.Headers(newArticles), getSelf());
+            else
+                predictor.tell(new DJPredictor.NoNewHeaders(), getSelf());
+
+            getContext().setReceiveTimeout(Duration.Undefined());
+        }
+        catch (Exception e){
+            getContext().setReceiveTimeout(Duration.Undefined());
+            predictor.tell(new Status.Failure(e), getSelf());
+        }
     }
 
     static public Props props( ActorRef predictor, CrawlerConfig config ) {
