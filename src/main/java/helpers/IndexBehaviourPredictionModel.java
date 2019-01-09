@@ -7,6 +7,7 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import java.io.*;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,30 +15,25 @@ import static java.util.stream.Collectors.toSet;
 
 public class IndexBehaviourPredictionModel implements Closeable {
 
-    private static final String COMMAND = "python";
-
+    private Socket socket;
     private List<Double> weights;
-    private Process process;
 
-    public IndexBehaviourPredictionModel(String modelPath, List<Double> weights) throws IOException {
+    public IndexBehaviourPredictionModel(String modelHost, int modelPort, List<Double> weights) throws IOException {
         if (weights.size() != 5) {
             throw new IllegalArgumentException("There should be only 5 weights (one for each class)!");
         }
 
+        this.socket = new Socket(modelHost, modelPort);
         this.weights = weights;
-        this.process = new ProcessBuilder(COMMAND, modelPath)
-                .redirectErrorStream(true)
-                .start();
     }
 
     public List<Prediction> predict(List<Article> articles, List<IndexDescriptor> indexHistory) throws IOException {
-        // TODO Don't call a new process on every call!
-        BufferedWriter outputStream = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
-        BufferedReader inputStream = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        BufferedWriter outputStream = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+        BufferedReader inputStream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-        // We add a newline character here because models read from standard input line by line
         String modelInput = prepareModelInput(articles, indexHistory);
         outputStream.write(modelInput);
+        outputStream.flush();
         String modelOutput = inputStream.readLine();
         return new ArrayList<>(parseModelOutput(modelOutput));
     }
@@ -73,7 +69,7 @@ public class IndexBehaviourPredictionModel implements Closeable {
     }
 
     @Override
-    public void close() {
-        this.process.destroy();
+    public void close() throws IOException {
+        this.socket.close();
     }
 }
