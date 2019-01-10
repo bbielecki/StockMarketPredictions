@@ -1,6 +1,8 @@
 package actors;
 
+import DomainObjects.InvestmentRisk;
 import DomainObjects.Prediction;
+import Exceptions.InvestorHelperException;
 import akka.ConfigurationException;
 import akka.actor.*;
 import akka.event.Logging;
@@ -8,6 +10,7 @@ import akka.event.LoggingAdapter;
 
 import DomainObjects.ModelConfig;
 
+import helpers.InvestorHelper;
 import helpers.PredictionClassTranslator;
 import helpers.PredictorConfigReader;
 import scala.concurrent.duration.Duration;
@@ -25,6 +28,8 @@ public class PortfolioManager extends AbstractActor {
     private static BlockingQueue<PredictionResult> predictionResults;
     private static List<ActorRef> models;
     private static List<ModelConfig> modelConfigs;
+    private InvestmentRisk userRisk;
+    private int moneyToInvest;
 
     public static class PredictionResult{
         public final LocalDate predictionDate;
@@ -73,6 +78,16 @@ public class PortfolioManager extends AbstractActor {
             this.config = config;
         }
     }
+    public static class SetupUserPreferences{
+        public SetupUserPreferences(InvestmentRisk userRisk, int moneyToInvest) {
+            this.userRisk = userRisk;
+            this.moneyToInvest = moneyToInvest;
+        }
+
+        public final InvestmentRisk userRisk;
+        public final int moneyToInvest;
+
+    }
 
 
     private void handlePredictorError(ModelConfig config) {
@@ -107,6 +122,12 @@ public class PortfolioManager extends AbstractActor {
         System.out.println();
         System.out.println("The best model predicted that Dow Jones Index Value will have " + PredictionClassTranslator.ToDescription(theBestResult.getKey()));
         System.out.println("This prediction was made with " + theBestResult.getValue() + "% confidence.");
+        try {
+            System.out.println("Prediction system recommendation is: " + InvestorHelper.getInvestmentActionType(moneyToInvest, userRisk, theBestResult.getKey(), theBestResult.getValue()));
+        } catch (InvestorHelperException e) {
+            System.out.println("System cannot recommend the best action. Probably user did not provide amount of money to invest and preferred risk.");
+            e.printStackTrace();
+        }
         System.out.println();
         System.out.println();
     }

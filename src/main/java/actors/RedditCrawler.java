@@ -35,6 +35,7 @@ public class RedditCrawler extends AbstractActor {
     //should get the configuration which determine the range of the articles (first 5, random 5 etc...)
     private void crawlDataSource(LocalDate articlesDate){
         log.error("In Reddit Crawler " + getSelf().path() + CrawlingSourceUnavailableException.class + " has occurred");
+        predictor.tell(new DJPredictor.CrawlingException(this.config), getSelf());
         predictor.tell(new DJPredictor.CrawlingSourceUnavailable(this.config), getSelf());
         //get articles by date.
 //        try{
