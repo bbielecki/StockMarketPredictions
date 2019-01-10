@@ -30,7 +30,7 @@ public class InvestorHelperTests {
         int money = 100;
         InvestmentRisk risk = InvestmentRisk.HIGH;
         int predictionClass = 4;
-        double predictionProbability = 0.32;
+        double predictionProbability = 0.5;
 
         //act
         InvestmentActionType action = InvestorHelper.getInvestmentActionType(money, risk, predictionClass, predictionProbability);
@@ -45,7 +45,7 @@ public class InvestorHelperTests {
         int money = 100;
         InvestmentRisk risk = InvestmentRisk.MEDIUM;
         int predictionClass = 4;
-        double predictionProbability = 0.41;
+        double predictionProbability = 0.8;
 
         //act
         InvestmentActionType action = InvestorHelper.getInvestmentActionType(money, risk, predictionClass, predictionProbability);
@@ -60,7 +60,7 @@ public class InvestorHelperTests {
         int money = 100;
         InvestmentRisk risk = InvestmentRisk.LOW;
         int predictionClass = 4;
-        double predictionProbability = 0.7;
+        double predictionProbability = 1;
 
         //act
         InvestmentActionType action = InvestorHelper.getInvestmentActionType(money, risk, predictionClass, predictionProbability);
@@ -75,7 +75,7 @@ public class InvestorHelperTests {
         int money = 100;
         InvestmentRisk risk = InvestmentRisk.HIGH;
         int predictionClass = 1;
-        double predictionProbability = 0.5;
+        double predictionProbability = 0.6;
 
         //act
         InvestmentActionType action = InvestorHelper.getInvestmentActionType(money, risk, predictionClass, predictionProbability);

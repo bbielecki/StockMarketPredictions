@@ -1,7 +1,7 @@
 package DomainObjects;
 
 public enum InvestmentRisk {
-    HIGH(3),
+    HIGH(4),
     MEDIUM(2),
     LOW(1);
 
