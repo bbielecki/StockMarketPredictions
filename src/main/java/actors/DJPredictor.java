@@ -214,7 +214,7 @@ public class DJPredictor extends AbstractActor {
                     log.info("DJ Predictor " + getSelf().path() + " received request " + StartPrediction.class);
 
                     //start prediction request triggers DJ predictor timeout which will be cancelled only if all prediction request will be handled.
-                    getContext().setReceiveTimeout(x.predictionTimeout);
+                    if(predictionRequests.size() == 0) getContext().setReceiveTimeout(x.predictionTimeout);
                     //add prediction date to prediction job queue.
                     predictionRequests.put(x.predictionDate);
                     crawlArticles(x.predictionDate);

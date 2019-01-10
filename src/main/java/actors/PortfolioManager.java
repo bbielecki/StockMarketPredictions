@@ -86,7 +86,8 @@ public class PortfolioManager extends AbstractActor {
 
         public final InvestmentRisk userRisk;
         public final int moneyToInvest;
-
+    }
+    public static class ConfirmationMessage{
     }
 
 
@@ -171,12 +172,16 @@ public class PortfolioManager extends AbstractActor {
         return receiveBuilder()
                 .match(StartPrediction.class, x->{
                     log.info("Portfolio Manager " + getSelf().path() + " is starting prediction on date: " + x.predictionDate);
-                    // TODO Eliminate race
-                    getContext().setReceiveTimeout(Duration.create(10, TimeUnit.SECONDS));
-                    Duration timeout = Duration.create(5, TimeUnit.SECONDS);
+                    // TODO Eliminate race - DONE. timeout is set only on first request. Then the timeout handle all request one by one
+                    // and reset timeout when all requests are handled. Disadvantage of this solution is that the next request will be handled
+                    // later the timeout interval if any request is scheduled.
+                    if(predictionResults.size() == 0){
+                        getContext().setReceiveTimeout(Duration.create(10, TimeUnit.SECONDS));
+                        log.info("Portfolio Manager " + getSelf().path() + " is creating all related predictors.");
+                        createChildren();
+                    }
 
-                    log.info("Portfolio Manager " + getSelf().path() + " is creating all related predictors.");
-                    createChildren();
+                    Duration timeout = Duration.create(5, TimeUnit.SECONDS);
                     models.forEach(model -> model.tell(new DJPredictor.StartPrediction(x.predictionDate, timeout), getSelf()));
                 })
                 .match(PredictionResult.class, x->{
@@ -200,6 +205,9 @@ public class PortfolioManager extends AbstractActor {
                 .match(DJPredictorCrawlersException.class, x -> {
                     log.info("Portfolio Manager " + getSelf().path() + " received message " + DJPredictorCrawlersException.class + ". Killing a child which failed...");
                     getSender().tell(Kill.getInstance(), getSelf());
+                })
+                .match(SetupUserPreferences.class, x -> {
+
                 })
                 .build();
     }
