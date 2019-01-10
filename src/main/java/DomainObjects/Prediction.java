@@ -46,4 +46,14 @@ public class Prediction {
     public int hashCode() {
         return Objects.hash(predictionClass, probability, weight, predictorWeight);
     }
+
+    @Override
+    public String toString() {
+        return "Prediction{" +
+                "predictionClass=" + predictionClass +
+                ", probability=" + probability +
+                ", weight=" + weight +
+                ", predictorWeight=" + predictorWeight +
+                '}';
+    }
 }

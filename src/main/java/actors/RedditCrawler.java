@@ -1,13 +1,15 @@
 package actors;
 
-import Exceptions.CrawlingSourceUnavailableException;
+import DomainObjects.Article;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import DomainObjects.CrawlerConfig;
+import helpers.ArticleFileParser;
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -34,26 +36,21 @@ public class RedditCrawler extends AbstractActor {
 
     //should get the configuration which determine the range of the articles (first 5, random 5 etc...)
     private void crawlDataSource(LocalDate articlesDate){
-        log.error("In Reddit Crawler " + getSelf().path() + CrawlingSourceUnavailableException.class + " has occurred");
-        predictor.tell(new DJPredictor.CrawlingException(this.config), getSelf());
-        predictor.tell(new DJPredictor.CrawlingSourceUnavailable(this.config), getSelf());
-        //get articles by date.
-//        try{
-//            //todo: use config
-//            List<Article> newArticles = ArticleFileParser.readArticles(LocalDate.now());
-//
-//            //automatically send crawled articles to subscribed index predictor
-//            if (!newArticles.isEmpty())
-//                predictor.tell(new DJPredictor.Headers(newArticles), getSelf());
-//            else
-//                predictor.tell(new DJPredictor.NoNewHeaders(), getSelf());
-//
-//            getContext().setReceiveTimeout(Duration.Undefined());
-//        }
-//        catch (Exception e){
-//            getContext().setReceiveTimeout(Duration.Undefined());
-//            predictor.tell(new Status.Failure(e), getSelf());
-//        }
+        try{
+            List<Article> newArticles = ArticleFileParser.readArticles(articlesDate, config.getReadModulo(), config.getPathToFile());
+
+            //automatically send crawled articles to subscribed index predictor
+            if (!newArticles.isEmpty())
+                predictor.tell(new DJPredictor.Headers(newArticles), getSelf());
+            else
+                predictor.tell(new DJPredictor.NoNewHeaders(), getSelf());
+
+            getContext().setReceiveTimeout(Duration.Undefined());
+        }
+        catch (Exception e){
+            getContext().setReceiveTimeout(Duration.Undefined());
+            predictor.tell(new Status.Failure(e), getSelf());
+        }
     }
 
     static public Props props( ActorRef predictor, CrawlerConfig config ) {

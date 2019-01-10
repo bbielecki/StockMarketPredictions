@@ -116,13 +116,9 @@ public class DJPredictor extends AbstractActor {
         new Thread(() -> {
             try {
                 LocalDate predictionDate = predictionRequests.take();
-
-                //todo: delete after tests
-                manager.tell(new PortfolioManager.PredictionResult(predictionDate, new ArrayList<>(), getSelf().path()), getSelf());
-
                 List<Article> articleForPrediction = getArticlesByDate(predictionDate);
                 List<IndexDescriptor> indexHistoryForPrediction = getIndexHistoryByDate(predictionDate);
-//                predict(articleForPrediction, indexHistoryForPrediction, predictionDate);
+                predict(articleForPrediction, indexHistoryForPrediction, predictionDate);
 
             } catch (Exception e) {
                 log.error("In DJ Predictor " + getSelf().path() + " an error " + e.getMessage() + "has occurred. Sending information to Manager.");
@@ -151,9 +147,10 @@ public class DJPredictor extends AbstractActor {
         List<Prediction> predictionsToReturn = new ArrayList<>();
         try {
             IndexBehaviourPredictionModel model = new IndexBehaviourPredictionModel(
-                    predictorConfig.getModelPath(),
+                    "127.0.0.1", // TODO Read from config
+                    10000, // TODO Read from config
                     nCopies(5, (double) activeChildrenCounter / predictorConfig.getMaxCrawlers()));
-            model.predict(articles, indexHistory);
+            predictionsToReturn.addAll(model.predict(articles, indexHistory));
         } catch (IOException e) {
             System.out.println("Reading predictions from model failed");
             manager.tell(new PortfolioManager.DJPredictorModelCommunicationError(predictorConfig), getSelf());
