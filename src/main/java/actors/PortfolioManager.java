@@ -178,7 +178,7 @@ public class PortfolioManager extends AbstractActor {
     }
 
     private boolean checkIfReceivedAllResults(LocalDate predictionDate){
-        return predictionResults.get(predictionDate).size() == 3;
+        return predictionResults.get(predictionDate).size() == modelConfigs.size();
     }
 
 

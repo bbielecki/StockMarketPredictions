@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -25,7 +26,7 @@ public class DJPredictor extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
 
     private ModelConfig predictorConfig;
-    private BlockingQueue<Article> receivedArticles = new LinkedBlockingQueue<>();
+    private BlockingQueue<List<Article>> receivedArticles = new LinkedBlockingQueue<>();
     private BlockingQueue<LocalDate> predictionRequests = new LinkedBlockingQueue<>();
     private static List<ActorRef> children;
     private static int activeChildrenCounter;
@@ -85,7 +86,10 @@ public class DJPredictor extends AbstractActor {
 
 
     private List<Article> getArticlesByDate(LocalDate articlesDate) {
-        return receivedArticles.stream().filter(article -> article.getDate().isEqual(articlesDate)).collect(toList());
+        return receivedArticles.stream()
+                .flatMap(Collection::stream)
+                .filter(article -> article.getDate().isEqual(articlesDate))
+                .collect(toList());
     }
 
     private List<IndexDescriptor> getIndexHistoryByDate(LocalDate dateOfPrediction) {
@@ -198,14 +202,15 @@ public class DJPredictor extends AbstractActor {
                 .match(Headers.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received request " + Headers.class);
 
-                    if (receivedArticles.size() == 0)
-                        x.articles.forEach(a -> {
-                            try {
-                                receivedArticles.put(a);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        });
+                    try {
+                        receivedArticles.put(x.articles);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                    if (receivedArticles.size() == children.size()) {
+                        startPrediction();
+                    }
                 })
                 .match(NoNewHeaders.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received request " + NoNewHeaders.class);
