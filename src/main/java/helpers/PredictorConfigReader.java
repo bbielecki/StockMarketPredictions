@@ -30,12 +30,14 @@ public class PredictorConfigReader {
             prop.load(is);
 
             int maxCrawlers = Integer.parseInt(prop.getProperty("maxCrawlers"));
-            String modelPath = prop.getProperty("modelPath");
+            String modelServiceAddress = prop.getProperty("modelServiceAddress");
+            int modelServicePort = Integer.parseInt(prop.getProperty("modelServicePort"));
             String indexHistoryPath = prop.getProperty("indexHistoryPath");
 
             ModelConfig mc = new ModelConfig();
             mc.setMaxCrawlers(maxCrawlers);
-            mc.setModelPath(modelPath);
+            mc.setModelServiceAddress(modelServiceAddress);
+            mc.setModelServicePort(modelServicePort);
             mc.setIndexHistoryPath(indexHistoryPath);
 
             return mc;

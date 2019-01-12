@@ -147,8 +147,8 @@ public class DJPredictor extends AbstractActor {
         List<Prediction> predictionsToReturn = new ArrayList<>();
         try {
             IndexBehaviourPredictionModel model = new IndexBehaviourPredictionModel(
-                    "127.0.0.1", // TODO Read from config
-                    10000, // TODO Read from config
+                    predictorConfig.getModelServiceAddress(),
+                    predictorConfig.getModelServicePort(),
                     nCopies(5, (double) activeChildrenCounter / predictorConfig.getMaxCrawlers()));
             predictionsToReturn.addAll(model.predict(articles, indexHistory));
         } catch (IOException e) {

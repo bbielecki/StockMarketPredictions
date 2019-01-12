@@ -178,8 +178,7 @@ public class PortfolioManager extends AbstractActor {
     }
 
     private boolean checkIfReceivedAllResults(LocalDate predictionDate){
-        if(predictionResults.get(predictionDate).size() == 3)return true;
-        return false;
+        return predictionResults.get(predictionDate).size() == 3;
     }
 
 
@@ -243,6 +242,7 @@ public class PortfolioManager extends AbstractActor {
                     }
                     log.info("Prediction result was added to queue.");
 
+                    //if PortfolioManager received all 3 prediction results from all DJPredictors then it can start voting and decision process.
                     if(checkIfReceivedAllResults(x.predictionDate)) handlePredictionResult(predictionResults, x.predictionDate);
                 })
                 .match(ReceiveTimeout.class, x -> {
