@@ -134,6 +134,8 @@ public class PortfolioManager extends AbstractActor {
             try{
 
                 presentResultOnConsole( getFinalClass(aggregatedPredictions) );
+                //clear prediction result queue
+                predictionResults.remove(predictionDate);
 
             }catch (Exception e){
                 e.printStackTrace();
@@ -244,6 +246,10 @@ public class PortfolioManager extends AbstractActor {
 
                     //if PortfolioManager received all 3 prediction results from all DJPredictors then it can start voting and decision process.
                     if(checkIfReceivedAllResults(x.predictionDate)) handlePredictionResult(predictionResults, x.predictionDate);
+                    if(predictionResults.size() == 0) {
+                        log.info("PredictionManager removes timeout.");
+                        getContext().setReceiveTimeout(Duration.Undefined());
+                    }
                 })
                 .match(ReceiveTimeout.class, x -> {
                     log.info("Prtfolio Manager " + getSelf().path() + " received request " + ReceiveTimeout.class);

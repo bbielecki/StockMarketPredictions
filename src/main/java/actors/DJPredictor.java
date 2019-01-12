@@ -18,6 +18,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.nCopies;
 import static java.util.stream.Collectors.toList;
@@ -26,6 +27,7 @@ public class DJPredictor extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
 
     private ModelConfig predictorConfig;
+    //todo: move receivedArticles to Map<LocalDate, List<List>>
     private BlockingQueue<List<Article>> receivedArticles = new LinkedBlockingQueue<>();
     private BlockingQueue<LocalDate> predictionRequests = new LinkedBlockingQueue<>();
     private static List<ActorRef> children;
@@ -50,9 +52,11 @@ public class DJPredictor extends AbstractActor {
     }
     public static class Headers {
         public final List<Article> articles;
+        public final LocalDate articlesDate;
 
-        public Headers(List<Article> articles) {
+        public Headers(List<Article> articles, LocalDate articlesDate) {
             this.articles = articles;
+            this.articlesDate = articlesDate;
         }
     }
     public static class NoNewHeaders {
@@ -83,7 +87,14 @@ public class DJPredictor extends AbstractActor {
         }
     }
 
+    private void removeCrawlerResponses(LocalDate predictionDate){
+        List<List<Article>> temp = receivedArticles.stream().filter(articles -> !predictionDate.equals(articles.get(0).getDate())).collect(Collectors.toList());
+        receivedArticles = new LinkedBlockingQueue<>(temp);
+    }
 
+    private int getCurrentCrawlerResponsesNumber(LocalDate predictionDate, BlockingQueue<List<Article>> crawlerResponses){
+       return (int) crawlerResponses.stream().filter(articles -> predictionDate.equals(articles.get(0).getDate())).count();
+    }
 
     private List<Article> getArticlesByDate(LocalDate articlesDate) {
         return receivedArticles.stream()
@@ -208,8 +219,10 @@ public class DJPredictor extends AbstractActor {
                         e.printStackTrace();
                     }
 
-                    if (receivedArticles.size() == children.size()) {
+                    if (getCurrentCrawlerResponsesNumber(x.articlesDate, receivedArticles) == children.size()) {
                         startPrediction();
+                        removeCrawlerResponses(x.articlesDate);
+                        if(receivedArticles.size() == 0) getContext().setReceiveTimeout(scala.concurrent.duration.Duration.Undefined());
                     }
                 })
                 .match(NoNewHeaders.class, x -> {

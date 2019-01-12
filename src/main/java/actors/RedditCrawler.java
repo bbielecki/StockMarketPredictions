@@ -41,7 +41,7 @@ public class RedditCrawler extends AbstractActor {
 
             //automatically send crawled articles to subscribed index predictor
             if (!newArticles.isEmpty())
-                predictor.tell(new DJPredictor.Headers(newArticles), getSelf());
+                predictor.tell(new DJPredictor.Headers(newArticles, articlesDate), getSelf());
             else
                 predictor.tell(new DJPredictor.NoNewHeaders(), getSelf());
 

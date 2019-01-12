@@ -33,12 +33,13 @@ public class DJPredictorTests {
         //prepare
         final TestKit testProbe = new TestKit(system);
         ActorRef dj = system.actorOf(DJPredictor.props(testProbe.getRef(), new ModelConfig()));
+        LocalDate date = LocalDate.now();
 
         List<Article> articles = new ArrayList<>();
-        articles.add(new Article("test", LocalDate.now()));
+        articles.add(new Article("test", date));
 
         //act
-        dj.tell(new DJPredictor.Headers(articles), testProbe.getRef());
+        dj.tell(new DJPredictor.Headers(articles, date), testProbe.getRef());
 
 
     }
