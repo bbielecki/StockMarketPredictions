@@ -89,7 +89,7 @@ public class DJPredictor extends AbstractActor {
     }
 
     private List<IndexDescriptor> getIndexHistoryByDate(LocalDate dateOfPrediction) {
-        return IndexHistoryReader.readHistory(predictorConfig.getIndexHistoryPath(), dateOfPrediction, 1);
+        return IndexHistoryReader.readHistory(predictorConfig.getIndexHistoryPath(), dateOfPrediction, predictorConfig.getHistoryWindow());
     }
 
     private void predict(List<Article> articles, List<IndexDescriptor> indexHistory, LocalDate predictionDate) {

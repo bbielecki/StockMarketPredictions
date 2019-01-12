@@ -30,6 +30,7 @@ public class PredictorConfigReader {
             prop.load(is);
 
             int maxCrawlers = Integer.parseInt(prop.getProperty("maxCrawlers"));
+            int historyWindow = Integer.parseInt(prop.getProperty("historyWindow"));
             String modelServiceAddress = prop.getProperty("modelServiceAddress");
             int modelServicePort = Integer.parseInt(prop.getProperty("modelServicePort"));
             String indexHistoryPath = prop.getProperty("indexHistoryPath");
@@ -39,6 +40,7 @@ public class PredictorConfigReader {
             mc.setModelServiceAddress(modelServiceAddress);
             mc.setModelServicePort(modelServicePort);
             mc.setIndexHistoryPath(indexHistoryPath);
+            mc.setHistoryWindow(historyWindow);
 
             return mc;
         } catch (IOException e) {

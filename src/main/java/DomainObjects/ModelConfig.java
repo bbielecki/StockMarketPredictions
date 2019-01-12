@@ -3,6 +3,7 @@ package DomainObjects;
 public class ModelConfig {
 
     private int maxCrawlers = 5;
+    private int historyWindow;
     private String indexHistoryPath;
     private String modelServiceAddress;
     private int modelServicePort;
@@ -37,5 +38,13 @@ public class ModelConfig {
 
     public void setIndexHistoryPath(String indexHistoryPath) {
         this.indexHistoryPath = indexHistoryPath;
+    }
+
+    public int getHistoryWindow() {
+        return historyWindow;
+    }
+
+    public void setHistoryWindow(int historyWindow) {
+        this.historyWindow = historyWindow;
     }
 }
