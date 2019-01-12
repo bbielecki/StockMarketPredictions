@@ -3,11 +3,14 @@ package helpers;
 import DomainObjects.IndexDescriptor;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import static java.lang.ClassLoader.getSystemResourceAsStream;
+import static java.util.Objects.requireNonNull;
 
 public class IndexHistoryReader {
 
@@ -23,7 +26,7 @@ public class IndexHistoryReader {
     public static List<IndexDescriptor> readHistory(String filePath, LocalDate predictionDate, int windowSize) {
 
         List<IndexDescriptor> indexDescriptors = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(requireNonNull(getSystemResourceAsStream(filePath))))) {
 
             // Skip header
             br.readLine();

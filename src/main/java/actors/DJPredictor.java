@@ -7,28 +7,29 @@ import akka.event.LoggingAdapter;
 import akka.japi.pf.DeciderBuilder;
 import helpers.CrawlerConfigReader;
 import helpers.IndexBehaviourPredictionModel;
-import helpers.IndexHistoryReader;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 
+import static helpers.IndexHistoryReader.readHistory;
 import static java.util.Collections.nCopies;
-import static java.util.stream.Collectors.toList;
 
 public class DJPredictor extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
 
     private ModelConfig predictorConfig;
-    //todo: move receivedArticles to Map<LocalDate, List<List>>
-    private Map<LocalDate, List<List<Article>>> receivedArticles = new HashMap<>();
+    private Map<LocalDate, List<Article>> receivedArticles = new HashMap<>();
     private BlockingQueue<LocalDate> predictionRequests = new LinkedBlockingQueue<>();
     private static List<ActorRef> children;
+    private Map<LocalDate, Integer> childrenResponseCounter = new HashMap<>();
     private static int activeChildrenCounter;
     private ActorRef manager;
     private static SupervisorStrategy strategy =
@@ -50,11 +51,11 @@ public class DJPredictor extends AbstractActor {
     }
     public static class Headers {
         public final List<Article> articles;
-        public final LocalDate articlesDate;
+        public final LocalDate preditionDate;
 
-        public Headers(List<Article> articles, LocalDate articlesDate) {
+        public Headers(List<Article> articles, LocalDate preditionDate) {
             this.articles = articles;
-            this.articlesDate = articlesDate;
+            this.preditionDate = preditionDate;
         }
     }
     public static class NoNewHeaders {
@@ -85,20 +86,8 @@ public class DJPredictor extends AbstractActor {
         }
     }
 
-    private void removeCrawlerResponses(LocalDate predictionDate){
-        receivedArticles.remove(predictionDate);
-    }
-
-    private int getCurrentCrawlerResponsesNumber(LocalDate predictionDate){
-        return receivedArticles.get(predictionDate).size();
-    }
-
-    private List<Article> getArticlesByDate(LocalDate articlesDate) {
-        return receivedArticles.get(articlesDate).stream().flatMap(Collection::stream).collect(toList());
-    }
-
     private List<IndexDescriptor> getIndexHistoryByDate(LocalDate dateOfPrediction) {
-        return IndexHistoryReader.readHistory(predictorConfig.getIndexHistoryPath(), dateOfPrediction, predictorConfig.getHistoryWindow());
+        return readHistory(predictorConfig.getIndexHistoryPath(), dateOfPrediction, predictorConfig.getHistoryWindow());
     }
 
     private void predict(List<Article> articles, List<IndexDescriptor> indexHistory, LocalDate predictionDate) {
@@ -125,9 +114,10 @@ public class DJPredictor extends AbstractActor {
         new Thread(() -> {
             try {
                 LocalDate predictionDate = predictionRequests.take();
-                List<Article> articleForPrediction = getArticlesByDate(predictionDate);
+                List<Article> articleForPrediction = receivedArticles.get(predictionDate);
                 List<IndexDescriptor> indexHistoryForPrediction = getIndexHistoryByDate(predictionDate);
                 predict(articleForPrediction, indexHistoryForPrediction, predictionDate);
+                receivedArticles.remove(predictionDate);
 
             } catch (Exception e) {
                 log.error("In DJ Predictor " + getSelf().path() + " an error " + e.getMessage() + "has occurred. Sending information to Manager.");
@@ -207,12 +197,15 @@ public class DJPredictor extends AbstractActor {
                 .match(Headers.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received request " + Headers.class);
 
-                    if(receivedArticles.containsKey(x.articlesDate))
-                        receivedArticles.get(x.articlesDate).add(x.articles);
+                    if(childrenResponseCounter.containsKey(x.preditionDate)) {
+                        childrenResponseCounter.put(x.preditionDate, childrenResponseCounter.get(x.preditionDate) + 1);
+                    }
 
-                    if (getCurrentCrawlerResponsesNumber(x.articlesDate) == children.size()) {
+                    if(receivedArticles.containsKey(x.preditionDate))
+                        receivedArticles.get(x.preditionDate).addAll(x.articles);
+
+                    if (childrenResponseCounter.get(x.preditionDate) == children.size()) {
                         startPrediction();
-                        removeCrawlerResponses(x.articlesDate);
                         if(receivedArticles.size() == 0) getContext().setReceiveTimeout(scala.concurrent.duration.Duration.Undefined());
                     }
                 })
@@ -225,6 +218,8 @@ public class DJPredictor extends AbstractActor {
                     //start prediction request triggers DJ predictor timeout which will be cancelled only if all prediction request will be handled.
                     if(predictionRequests.size() == 0) getContext().setReceiveTimeout(x.predictionTimeout);
                     //add prediction date to prediction job queue.
+                    childrenResponseCounter.put(x.predictionDate, 0);
+                    receivedArticles.put(x.predictionDate, new ArrayList<>());
                     predictionRequests.put(x.predictionDate);
                     crawlArticles(x.predictionDate);
                 })

@@ -2,15 +2,17 @@ package helpers;
 
 import DomainObjects.Article;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
-import java.util.*;
-
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
-import java.util.stream.Collectors;
+import java.io.InputStreamReader;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.lang.ClassLoader.getSystemResourceAsStream;
+import static java.util.Objects.requireNonNull;
 
 public class ArticleFileParser {
 
@@ -26,7 +28,7 @@ public class ArticleFileParser {
         List<Article> articlesToReturn = new ArrayList<>();
 
         try {
-            br = new BufferedReader(new FileReader(pathToFile));
+            br = new BufferedReader(new InputStreamReader(requireNonNull(getSystemResourceAsStream(pathToFile))));
 
             //skip headers
             br.readLine();
