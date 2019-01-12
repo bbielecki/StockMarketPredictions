@@ -13,9 +13,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
@@ -28,7 +26,7 @@ public class DJPredictor extends AbstractActor {
 
     private ModelConfig predictorConfig;
     //todo: move receivedArticles to Map<LocalDate, List<List>>
-    private BlockingQueue<List<Article>> receivedArticles = new LinkedBlockingQueue<>();
+    private Map<LocalDate, List<List<Article>>> receivedArticles = new HashMap<>();
     private BlockingQueue<LocalDate> predictionRequests = new LinkedBlockingQueue<>();
     private static List<ActorRef> children;
     private static int activeChildrenCounter;
@@ -88,19 +86,15 @@ public class DJPredictor extends AbstractActor {
     }
 
     private void removeCrawlerResponses(LocalDate predictionDate){
-        List<List<Article>> temp = receivedArticles.stream().filter(articles -> !predictionDate.equals(articles.get(0).getDate())).collect(Collectors.toList());
-        receivedArticles = new LinkedBlockingQueue<>(temp);
+        receivedArticles.remove(predictionDate);
     }
 
-    private int getCurrentCrawlerResponsesNumber(LocalDate predictionDate, BlockingQueue<List<Article>> crawlerResponses){
-       return (int) crawlerResponses.stream().filter(articles -> predictionDate.equals(articles.get(0).getDate())).count();
+    private int getCurrentCrawlerResponsesNumber(LocalDate predictionDate){
+        return receivedArticles.get(predictionDate).size();
     }
 
     private List<Article> getArticlesByDate(LocalDate articlesDate) {
-        return receivedArticles.stream()
-                .flatMap(Collection::stream)
-                .filter(article -> article.getDate().isEqual(articlesDate))
-                .collect(toList());
+        return receivedArticles.get(articlesDate).stream().flatMap(Collection::stream).collect(toList());
     }
 
     private List<IndexDescriptor> getIndexHistoryByDate(LocalDate dateOfPrediction) {
@@ -213,13 +207,10 @@ public class DJPredictor extends AbstractActor {
                 .match(Headers.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received request " + Headers.class);
 
-                    try {
-                        receivedArticles.put(x.articles);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+                    if(receivedArticles.containsKey(x.articlesDate))
+                        receivedArticles.get(x.articlesDate).add(x.articles);
 
-                    if (getCurrentCrawlerResponsesNumber(x.articlesDate, receivedArticles) == children.size()) {
+                    if (getCurrentCrawlerResponsesNumber(x.articlesDate) == children.size()) {
                         startPrediction();
                         removeCrawlerResponses(x.articlesDate);
                         if(receivedArticles.size() == 0) getContext().setReceiveTimeout(scala.concurrent.duration.Duration.Undefined());
