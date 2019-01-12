@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 
 public class PortfolioManager extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
-    private static BlockingQueue<PredictionResult> predictionResults;
+    private static HashMap<LocalDate, BlockingQueue<PredictionResult>> predictionResults;
     private static List<ActorRef> models;
     private static List<ModelConfig> modelConfigs;
     private InvestmentRisk userRisk;
@@ -111,22 +111,38 @@ public class PortfolioManager extends AbstractActor {
         }
     }
 
-    private void handlePredictionResult(BlockingQueue<PredictionResult> predictionResults){
+    private void handlePredictionResult(Map<LocalDate, BlockingQueue<PredictionResult>> predictionResults, LocalDate predictionDate){
         if(predictionResults.size() == 0){
-            log.info("No Prediction Results. Portfolio Manager finished its job.");
+            log.info("No Prediction Results!! Portfolio Manager finished its job.");
             return;
         }
-        List<PredictionResult> results = new ArrayList<>();
-        List<Prediction> predictions = new ArrayList<>();
+        try{
 
-        //take all predictions from blocked queue.
-        PredictionResult temp;
-        while ((temp = predictionResults.poll()) != null) results.add(temp);
-        //aggregate predictions from all Predictors
-        results.forEach(x -> predictions.addAll(x.predictions));
+            BlockingQueue<PredictionResult> results;
+            List<PredictionResult> resultsAsList = new ArrayList<>();
+            List<Prediction> aggregatedPredictions = new ArrayList<>();
 
-        presentResultOnConsole( getFinalClass(predictions) );
+            if(predictionDate == null) results = predictionResults.entrySet().iterator().next().getValue();
+            else results = predictionResults.get(predictionDate);
 
+            //take all predictions from blocked queue.
+            PredictionResult temp;
+            while ((temp = results.poll()) != null) resultsAsList.add(temp);
+            //aggregated predictions from all results on provided prediction date.
+            resultsAsList.forEach(x -> aggregatedPredictions.addAll(x.predictions));
+
+            try{
+
+                presentResultOnConsole( getFinalClass(aggregatedPredictions) );
+
+            }catch (Exception e){
+                e.printStackTrace();
+                log.error("In PortfolioManager an error has occurred in voting algorithm. Cannot present valid prediction result, please check errors stack.");
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+            log.error("In PortfolioManager an error has occurred during taking all predictions from received results.");
+        }
     }
 
     private void presentResultOnConsole(Map.Entry<Integer, Double> theBestResult){
@@ -146,7 +162,7 @@ public class PortfolioManager extends AbstractActor {
 
     private PortfolioManager() {
         log.info("Creating Portfolio manager");
-        predictionResults = new LinkedBlockingQueue<>();
+        predictionResults = new HashMap<>();
         modelConfigs = new ArrayList<>();
         models = new ArrayList<>();
 
@@ -159,6 +175,11 @@ public class PortfolioManager extends AbstractActor {
         for (ModelConfig config : modelConfigs) {
             models.add(getContext().actorOf(DJPredictor.props(getSelf(), config), DJPredictor.class.getSimpleName() + i++) );
         }
+    }
+
+    private boolean checkIfReceivedAllResults(LocalDate predictionDate){
+        if(predictionResults.get(predictionDate).size() == 3)return true;
+        return false;
     }
 
 
@@ -201,8 +222,8 @@ public class PortfolioManager extends AbstractActor {
                     // TODO Eliminate race - DONE. timeout is set only on first request. Then the timeout handle all request one by one
                     // and reset timeout when all requests are handled. Disadvantage of this solution is that the next request will be handled
                     // later the timeout interval if any request is scheduled.
-                    if(predictionResults.size() == 0){
-                        getContext().setReceiveTimeout(Duration.create(5, TimeUnit.SECONDS));
+                    if(!predictionResults.containsKey(x.predictionDate)){
+                        getContext().setReceiveTimeout(Duration.create(15, TimeUnit.SECONDS));
                         log.info("Portfolio Manager " + getSelf().path() + " is creating all related predictors.");
                         createChildren();
                     }
@@ -213,15 +234,21 @@ public class PortfolioManager extends AbstractActor {
                 .match(PredictionResult.class, x->{
                     log.info("Portfolio Manager " + getSelf().path() + " received prediction result.");
                     log.info("predictionResults size = " + predictionResults.size());
-                    if(!predictionResults.contains(x)){
-                        predictionResults.put(x);
-                        log.info("Prediction result was added to queue.");
+                    if(!predictionResults.containsKey(x.predictionDate)){
+                        BlockingQueue<PredictionResult> results = new LinkedBlockingQueue<>();
+                        results.add(x);
+                        predictionResults.put(x.predictionDate, results);
+                    }else {
+                        predictionResults.get(x.predictionDate).add(x);
                     }
+                    log.info("Prediction result was added to queue.");
+
+                    if(checkIfReceivedAllResults(x.predictionDate)) handlePredictionResult(predictionResults, x.predictionDate);
                 })
                 .match(ReceiveTimeout.class, x -> {
                     log.info("Prtfolio Manager " + getSelf().path() + " received request " + ReceiveTimeout.class);
                     getContext().setReceiveTimeout(Duration.Undefined());
-                    handlePredictionResult(predictionResults);
+                    handlePredictionResult(predictionResults, null);
 
                     log.info("Portfolio Manager is going destroy itself.");
                     getContext().stop(getSelf());
