@@ -10,11 +10,14 @@ import akka.event.LoggingAdapter;
 
 import DomainObjects.ModelConfig;
 
+import akka.japi.pf.DeciderBuilder;
 import helpers.InvestorHelper;
 import helpers.PredictionClassTranslator;
 import helpers.PredictorConfigReader;
 import scala.concurrent.duration.Duration;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
@@ -30,6 +33,14 @@ public class PortfolioManager extends AbstractActor {
     private static List<ModelConfig> modelConfigs;
     private InvestmentRisk userRisk;
     private int moneyToInvest;
+    private static SupervisorStrategy strategy =
+            new OneForOneStrategy(10, java.time.Duration.ofMinutes(1),
+                    DeciderBuilder
+                            .match(NullPointerException.class, e -> SupervisorStrategy.restart())
+                            .match(IOException.class, e -> SupervisorStrategy.restart())
+                            .match(FileNotFoundException.class, e-> SupervisorStrategy.stop() )
+                            .matchAny(o -> SupervisorStrategy.escalate())
+                            .build());
 
     public static class PredictionResult{
         public final LocalDate predictionDate;
@@ -150,6 +161,12 @@ public class PortfolioManager extends AbstractActor {
         }
     }
 
+
+    @Override
+    public SupervisorStrategy supervisorStrategy() {
+        return strategy;
+    }
+
     public static AbstractMap.SimpleEntry<Integer, Double> getFinalClass(List<Prediction> predictions) {
         Map<Integer, Double> weightedPredictions = predictions.stream().collect(Collectors.toMap(
                 Prediction::getPredictionClass, p -> p.getProbability() * p.getWeight() * p.getPredictorWeight(), (oldValue, newValue) -> oldValue + newValue));
@@ -171,17 +188,26 @@ public class PortfolioManager extends AbstractActor {
 
         return receiveBuilder()
                 .match(StartPrediction.class, x->{
+                    log.info("Portfolio Manager " + getSelf().path() + " received message " + StartPrediction.class);
+                    if(moneyToInvest == 0) {
+                        log.error("Money to invest is not provided. Cannot start prediction.");
+                        return;
+                    }
+                    if(userRisk == null) {
+                        log.error("Money to invest is not provided. Cannot start prediction.");
+                        return;
+                    }
                     log.info("Portfolio Manager " + getSelf().path() + " is starting prediction on date: " + x.predictionDate);
                     // TODO Eliminate race - DONE. timeout is set only on first request. Then the timeout handle all request one by one
                     // and reset timeout when all requests are handled. Disadvantage of this solution is that the next request will be handled
                     // later the timeout interval if any request is scheduled.
                     if(predictionResults.size() == 0){
-                        getContext().setReceiveTimeout(Duration.create(10, TimeUnit.SECONDS));
+                        getContext().setReceiveTimeout(Duration.create(5, TimeUnit.SECONDS));
                         log.info("Portfolio Manager " + getSelf().path() + " is creating all related predictors.");
                         createChildren();
                     }
 
-                    Duration timeout = Duration.create(5, TimeUnit.SECONDS);
+                    Duration timeout = Duration.create(10, TimeUnit.SECONDS);
                     models.forEach(model -> model.tell(new DJPredictor.StartPrediction(x.predictionDate, timeout), getSelf()));
                 })
                 .match(PredictionResult.class, x->{
@@ -207,7 +233,10 @@ public class PortfolioManager extends AbstractActor {
                     getSender().tell(Kill.getInstance(), getSelf());
                 })
                 .match(SetupUserPreferences.class, x -> {
-
+                    log.info("Portfolio Manager " + getSelf().path() + " received message " + SetupUserPreferences.class + ". You can start predictions.");
+                    userRisk = x.userRisk;
+                    moneyToInvest = x.moneyToInvest;
+                    if(getSender() != null && getSender() != ActorRef.noSender()) getSender().tell(new ConfirmationMessage(), getSelf());
                 })
                 .build();
     }

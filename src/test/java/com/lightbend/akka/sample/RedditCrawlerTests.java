@@ -1,4 +1,4 @@
-package helpers;
+package com.lightbend.akka.sample;
 
 import static org.junit.Assert.assertNotNull;
 
