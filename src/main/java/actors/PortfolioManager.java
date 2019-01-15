@@ -173,6 +173,8 @@ public class PortfolioManager extends AbstractActor {
     }
 
     private void createChildren() {
+        //do not create children if already exists.
+        if(models.size() > 0) return;
         int i = 1;
         for (ModelConfig config : modelConfigs) {
             models.add(getContext().actorOf(DJPredictor.props(getSelf(), config), DJPredictor.class.getSimpleName() + i++) );

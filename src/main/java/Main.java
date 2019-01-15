@@ -30,7 +30,7 @@ public class Main {
             String response = input.nextLine();
             if(response.equals("N")) stop=true;
             else if(response.equals("Y")){
-                if(portfolioManager == null) portfolioManager = system.actorOf(PortfolioManager.props(), "PortfolioManager");
+                if(portfolioManager == null || portfolioManager.isTerminated()) portfolioManager = system.actorOf(PortfolioManager.props(), "PortfolioManager");
                 System.out.println();
                 System.out.println("Please enter the amount of money to invest:");
                 int money = readUserMoney(input);
