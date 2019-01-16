@@ -1,14 +1,15 @@
 package actors;
 
 import DomainObjects.Article;
+import DomainObjects.CrawlerConfig;
 import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import DomainObjects.CrawlerConfig;
 import helpers.ArticleFileParser;
 import scala.concurrent.duration.Duration;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -37,7 +38,9 @@ public class RedditCrawler extends AbstractActor {
     //should get the configuration which determine the range of the articles (first 5, random 5 etc...)
     private void crawlDataSource(LocalDate articlesDate){
         try{
-            List<Article> newArticles = ArticleFileParser.readArticles(articlesDate, config.getReadModulo(), config.getPathToFile());
+            List<Article> newArticles = new ArrayList<>();
+            for(int i = 0; i < config.getWindowSize(); i++)
+                newArticles.addAll(ArticleFileParser.readArticles(articlesDate.minusDays(i), config.getReadModulo(), config.getPathToFile()));
 
             //automatically send crawled articles to subscribed index predictor
             if (!newArticles.isEmpty())
