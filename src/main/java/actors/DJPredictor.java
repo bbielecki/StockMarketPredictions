@@ -175,6 +175,7 @@ public class DJPredictor extends AbstractActor {
 
         int i = 1;
         for (CrawlerConfig config : crawlerConfigs) {
+            config.setWindowSize(predictorConfig.getHistoryWindow());
             children.add(getContext().actorOf(RedditCrawler.props(getSelf(), config), RedditCrawler.class.getSimpleName() + i++));
             activeChildrenCounter++;
         }
