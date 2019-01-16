@@ -102,12 +102,21 @@ public class PortfolioManager extends AbstractActor {
     }
 
 
-    private void handlePredictorError(ModelConfig config) {
+    private void handlePredictorError(ModelConfig config, ActorRef errorSender) {
         log.info("Portfolio Manager " + getSelf().path() + " received message " + DJPredictionException.class + ". Killing a child which failed...");
-        getSender().tell(Kill.getInstance(), getSelf());
+        errorSender.tell(Kill.getInstance(), getSelf());
         if (getContext().receiveTimeout() != Duration.Undefined()) {
-            log.info("Portfolio Manager restarts killed child with the same config.");
-            getContext().getSystem().actorOf(DJPredictor.props(getSelf(), config));
+            Timer resurectionTimer = new Timer();
+            resurectionTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    if(errorSender.isTerminated()){
+                        log.info("Portfolio Manager restarts killed child with the same config.");
+                        getContext().getSystem().actorOf(DJPredictor.props(getSelf(), config), DJPredictor.class.getSimpleName() + config.getActorId());
+                        resurectionTimer.cancel();
+                    }
+                }
+            }, 50L);
         }
     }
 
@@ -177,7 +186,8 @@ public class PortfolioManager extends AbstractActor {
         if(models.size() > 0) return;
         int i = 1;
         for (ModelConfig config : modelConfigs) {
-            models.add(getContext().actorOf(DJPredictor.props(getSelf(), config), DJPredictor.class.getSimpleName() + i++) );
+            config.setActorId(i++);
+            models.add(getContext().actorOf(DJPredictor.props(getSelf(), config), DJPredictor.class.getSimpleName() + config.getActorId()) );
         }
     }
 
@@ -261,8 +271,8 @@ public class PortfolioManager extends AbstractActor {
                     log.info("Portfolio Manager is going destroy itself.");
                     getContext().stop(getSelf());
                 })
-                .match(DJPredictionException.class, x -> handlePredictorError(x.config))
-                .match(DJPredictorModelCommunicationError.class, x -> handlePredictorError(x.config))
+                .match(DJPredictionException.class, x -> handlePredictorError(x.config, getSender()))
+                .match(DJPredictorModelCommunicationError.class, x -> handlePredictorError(x.config, getSender()))
                 .match(DJPredictorCrawlersException.class, x -> {
                     log.info("Portfolio Manager " + getSelf().path() + " received message " + DJPredictorCrawlersException.class + ". Killing a child which failed...");
                     getSender().tell(Kill.getInstance(), getSelf());

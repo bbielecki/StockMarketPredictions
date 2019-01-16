@@ -1,6 +1,8 @@
 package DomainObjects;
 
 public class CrawlerConfig {
+
+    private int actorId;
     private int readModulo;
     private String pathToFile;
 
@@ -15,5 +17,11 @@ public class CrawlerConfig {
 
     public String getPathToFile() {
         return pathToFile;
+    }
+
+    public int getActorId(){return actorId;}
+
+    public void setActorId(int actorId) {
+        this.actorId = actorId;
     }
 }

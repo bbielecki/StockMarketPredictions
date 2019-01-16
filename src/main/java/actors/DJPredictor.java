@@ -175,7 +175,8 @@ public class DJPredictor extends AbstractActor {
 
         int i = 1;
         for (CrawlerConfig config : crawlerConfigs) {
-            children.add(getContext().actorOf(RedditCrawler.props(getSelf(), config), RedditCrawler.class.getSimpleName() + i++));
+            config.setActorId(i++);
+            children.add(getContext().actorOf(RedditCrawler.props(getSelf(), config), RedditCrawler.class.getSimpleName() + config.getActorId()));
             activeChildrenCounter++;
         }
     }
@@ -232,7 +233,7 @@ public class DJPredictor extends AbstractActor {
                 .match(CrawlingException.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received message " + CrawlingSourceUnavailable.class + ". Restarting a child which failed...");
                     getSender().tell(Kill.getInstance(), getSelf());
-                    getContext().actorOf(RedditCrawler.props(getSelf(), x.config));
+                    getContext().actorOf(RedditCrawler.props(getSelf(), x.config), RedditCrawler.class.getSimpleName() + x.config.getActorId());
                 })
                 .match(ReceiveTimeout.class, x -> {
                     log.info("DJ Predictor " + getSelf().path() + " received message " + ReceiveTimeout.class + ". Starting prediction.");
@@ -241,5 +242,11 @@ public class DJPredictor extends AbstractActor {
                     startPrediction();
                 })
                 .build();
+    }
+
+    @Override
+    public void postStop() throws Exception {
+        log.info("DJPredictor " + getSelf().path() + " was stopped.");
+        super.postStop();
     }
 }

@@ -2,6 +2,7 @@ package DomainObjects;
 
 public class ModelConfig {
 
+    private int actorId;
     private int maxCrawlers = 5;
     private int historyWindow;
     private String indexHistoryPath;
@@ -46,5 +47,13 @@ public class ModelConfig {
 
     public void setHistoryWindow(int historyWindow) {
         this.historyWindow = historyWindow;
+    }
+
+    public int getActorId() {
+        return actorId;
+    }
+
+    public void setActorId(int actorId) {
+        this.actorId = actorId;
     }
 }
